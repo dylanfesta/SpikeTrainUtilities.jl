@@ -3,6 +3,11 @@ using LinearAlgebra,Statistics,StatsBase
 using Colors
 using RollingFunctions
 
+"""
+  SpikeTrains(n_units::N,trains::Vector{Vector{R}},t_start::R,t_end::R) where {R,N}
+
+Constructs a SpikeTrains object.  
+"""
 mutable struct SpikeTrains{R,N}
   n_units::N
   trains::Vector{Vector{R}}
