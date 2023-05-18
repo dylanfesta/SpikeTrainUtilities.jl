@@ -6,11 +6,11 @@ DocMeta.setdocmeta!(SpikeTrainUtilities, :DocTestSetup, :(using SpikeTrainUtilit
 makedocs(;
     modules=[SpikeTrainUtilities],
     authors="Dylan Festa",
-    repo="https://github.com/festad/SpikeTrainUtilities.jl/blob/{commit}{path}#{line}",
+    repo="https://github.com/dylanfesta/SpikeTrainUtilities.jl/blob/{commit}{path}#{line}",
     sitename="SpikeTrainUtilities.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://festad.github.io/SpikeTrainUtilities.jl",
+        canonical="https://dylanfesta.github.io/SpikeTrainUtilities.jl",
         edit_link="main",
         assets=String[],
     ),
@@ -20,6 +20,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/festad/SpikeTrainUtilities.jl",
+    repo="github.com/dylanfesta/SpikeTrainUtilities.jl",
     devbranch="main",
 )
