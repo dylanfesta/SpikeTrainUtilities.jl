@@ -1,6 +1,7 @@
 using SpikeTrainUtilities ; global const U = SpikeTrainUtilities
 using Test
 using Statistics
+using Random ; Random.seed!(0)
 
 @testset "Concatenate trains" begin
 
