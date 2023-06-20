@@ -280,6 +280,10 @@ function draw_spike_raster(S::SpikeTrains{R,N},dt::Real,time_duration::Real;
 end
 
 
+function plot_spike_raster(args...)
+  @error "Load Makie and CairoMakie first!"
+  return nothing
+end
 
 
 
