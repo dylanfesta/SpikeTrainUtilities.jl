@@ -285,7 +285,7 @@ function draw_spike_raster(S::SpikeTrains{R,N},dt::Real,time_duration::Real;
     spike_colors::Union{C,Vector{C}}=RGB(0.,0.0,0.0),
     max_size::Real=1E4) where {R,N,C<:Color}
   @assert t_start >= S.t_start "t_start is too small"   
-  @assert t_start + duration <= S.t_end "t_start + duration is too large"
+  @assert t_start + time_duration <= S.t_end "t_start + duration is too large"
   trains = S.trains
   return draw_spike_raster(trains,dt,time_duration;
     t_start=t_start,
