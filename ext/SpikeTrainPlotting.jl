@@ -38,7 +38,7 @@ function SpikeTrainUtilities.plot_spike_raster(trains::Vector{Vector{Float64}},
 end
 
 
-function SpikeTrainUtilities.plot_spike_raster(S::SpikeTrains{R,N},dt::Real,time_duration::Real;
+function SpikeTrainUtilities.plot_spike_raster(S::SpikeTrainUtilities.SpikeTrains{R,N},dt::Real,time_duration::Real;
     t_start::Real=0.0,
     spike_size::Integer = 5,
     spike_separator::Integer = 1,
