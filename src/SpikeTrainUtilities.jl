@@ -128,7 +128,7 @@ function bin_spikes(Y::Vector{R},dt::R,t_end::R;t_start::R=0.0) where R
 end
 
 function bin_spikes(S::SpikeTrains{R,N},dt::R) where {R,N}
-  nbins = div(delta_t(S),dt)
+  nbins = Int64(div(delta_t(S),dt))
   times = range(S.t_start,S.t_end;length=nbins+1)
   binned = fill(0,(nbins,S.n_units))
   for (neu,train) in enumerate(S.trains)
@@ -139,7 +139,7 @@ function bin_spikes(S::SpikeTrains{R,N},dt::R) where {R,N}
       end
     end
   end
-  return midpoints(times),ret
+  return midpoints(times),binned
 end
 
 function instantaneous_rates(S::SpikeTrains{R,N},dt::R) where {R,N}
