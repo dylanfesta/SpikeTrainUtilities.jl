@@ -66,6 +66,23 @@ end
   maximum(last, S.trains)
 end
 
+
+# This is to merge them together, horizontally, so to speak
+function Base.merge(S::SpikeTrains{R,N}...) where {R,N}
+  ntrains = length(S)
+  if ntrains == 1
+    return S[1]
+  end
+  # check at least t_start is the same
+  t_start = S[1].t_start
+  @assert all(s->isapprox(s.t_start,t_start;atol=1e-4),S) "Starting times should be the same"
+  new_tend = maximum(s->s.t_end,S)
+  new_n_units = sum(s->s.n_units,S)
+  new_trains = cat([s.trains for s in S]...,dims=1)
+  @assert length(new_trains) == new_n_units "Something went wrong"
+  return SpikeTrains(new_n_units,new_trains,t_start,new_tend)
+end
+
 ## analysis here
 
 """
