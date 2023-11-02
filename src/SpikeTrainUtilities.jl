@@ -85,6 +85,12 @@ end
 
 ## analysis here
 
+# this is not optimized, one could use searchsortedfirst
+@inline function numerical_rate(T::Vector{R},t_start::R,t_end::R) where R
+  return count( spk ->  t_start<= spk <= t_end ,T)/(t_end-t_start)
+end
+
+
 """
   numerical_rates(S::SpikeTrains{R,N};t_start::R=0.0,t_end::R=Inf) where {R,N}
 
@@ -95,8 +101,7 @@ function numerical_rates(S::SpikeTrains{R,N};
     t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R,N}
   t_start = something(t_start,S.t_start)
   t_end = something(t_end,S.t_end)
-  Δt = t_end - t_start
-  return [count( spk ->  t_start<= spk <= t_end ,train)/Δt for train in S.trains]
+  return [numerical_rate(train,t_start,t_end) for train in S.trains]
 end
 
 
@@ -154,12 +159,13 @@ function covariance_density_ij(X::Vector{R},Y::Vector{R},dτ::Real,τmax::R;
   ndt = length(times_cov)
   t_end = something(t_end, max(X[end],Y[end])- dτ)
   t_start = something(t_start,max(0.0,min(X[1],Y[1]) - dτ))
+  @assert t_start < t_end "t_start must be smaller than t_end"
   times_cov_ret = vcat(-reverse(times_cov[2:end]),times_cov)
   ret = Vector{Float64}(undef,2*ndt-1)
   binnedx = bin_spikes(X,dτ,t_end;t_start=t_start)[2]
   binnedy = bin_spikes(Y,dτ,t_end;t_start=t_start)[2]
-  rx = length(X) / (t_end-t_start) # mean rate
-  ry = length(Y) / (t_end-t_start) # mean rate
+  rx = numerical_rate(X,t_start,t_end) 
+  ry = numerical_rate(Y,t_start,t_end) 
   ndt_tot = length(binnedx)
   binned_sh = similar(binnedx)
   # 0 and forward
