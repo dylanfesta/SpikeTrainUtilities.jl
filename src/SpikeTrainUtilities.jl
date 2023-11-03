@@ -25,6 +25,23 @@ function SpikeTrains(trains::Vector{Vector{R}};
 end
 
 
+# constructor from spiketimes and spikeneurons
+function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
+    nneus::Integer;t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
+  t_start = something(t_start,spiketimes[1] - 10*eps(R))
+  t_end = something(t_end,spiketimes[end] + 10*eps(R))
+  trains = Vector{Vector{R}}(undef,nneus)
+  for neu in 1:nneus
+    idxspike = spikeneurons .== neu
+    if any(idxspike)
+      trains[neu] = spiketimes[idxspike]
+    else
+      trains[neu] = Vector{R}()
+    end 
+  end
+  return SpikeTrains(nneus,trains,t_start,t_end)
+end
+
 function delta_t(S::SpikeTrains{R,N}) where {R,N}
   return S.t_end - S.t_start
 end
@@ -218,6 +235,21 @@ function running_covariance_zero_lag(S::SpikeTrains{R,N},ij::Tuple{I,I},Δt::R;
 end
 
 
+function pearson_correlation(X::Vector{R},Y::Vector{R},dt::R;
+        t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R}
+  t_end = something(t_end, max(X[end],Y[end])- dt)
+  t_start = something(t_start,max(0.0,min(X[1],Y[1]) - dt))
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  binnedx = bin_spikes(X,dt,t_end;t_start=t_start)[2]
+  binnedy = bin_spikes(Y,dt,t_end;t_start=t_start)[2]
+  return cor(binnedx,binnedy)
+end
+
+function pearson_correlation(trains::SpikeTrains{R,N},ij::Tuple{I,I},dt::Real;
+        t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  return  pearson_correlation(trains.trains[ij[1]],trains.trains[ij[2]],dt;
+        t_end=t_end,t_start=t_start)
+end
 
 """
   draw_spike_raster(trains::Vector{Vector{Float64}},
