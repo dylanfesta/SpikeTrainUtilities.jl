@@ -236,7 +236,15 @@ end
 
 
 function pearson_correlation(X::Vector{R},Y::Vector{R},dt::R;
-        t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R}
+        t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
+        warn_empty::Bool=false) where {R}
+  # if empty, return 0.0
+  if isempty(X) || isempty(Y)
+    if warn_empty
+      @warn "One of the spike trains is empty! Correlation set to 0.0"
+    end
+    return 0.0
+  end
   t_end = something(t_end, max(X[end],Y[end])- dt)
   t_start = something(t_start,max(0.0,min(X[1],Y[1]) - dt))
   @assert t_start < t_end "t_start must be smaller than t_end"
@@ -247,6 +255,8 @@ end
 
 function pearson_correlation(trains::SpikeTrains{R,N},ij::Tuple{I,I},dt::Real;
         t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  t_start = something(t_start,trains.t_start)
+  t_end = something(t_end,trains.t_end)
   return  pearson_correlation(trains.trains[ij[1]],trains.trains[ij[2]],dt;
         t_end=t_end,t_start=t_start)
 end
