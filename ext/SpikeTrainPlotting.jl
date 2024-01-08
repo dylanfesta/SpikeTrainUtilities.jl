@@ -33,7 +33,7 @@ function SpikeTrainUtilities.plot_spike_raster(trains::Vector{Vector{Float64}},
   ax1 = Axis(f[1, 1], aspect=pxtimes/pxneus,
     rightspinevisible=false,topspinevisible=false,
     xlabel="time (s)",ylabel="neuron #")
-  image!(ax1,times,neu_yvals,rast)
+  image!(ax1,times,neu_yvals,rast;fxaa=false) # no antialiasing !
   return f
 end
 
