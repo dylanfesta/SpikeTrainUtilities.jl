@@ -433,7 +433,7 @@ function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
   dt = discrete.dt
   t_offset = discrete.t_start - 0.5*dt
   for neu in 1:n_units
-    trains[neu] = map( x->t_offset+dt*x,findall(discrete.trains[i,:]))
+    trains[neu] = map( x->t_offset+dt*x,findall(discrete.trains[neu,:]))
   end
   return SpikeTrains(n_units,trains,discrete.t_start,discrete.t_end)
 end
