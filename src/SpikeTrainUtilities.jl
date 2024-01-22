@@ -408,7 +408,7 @@ function make_random_spiketrains(rates::Vector{R},duration::R;t_start=zero(R)) w
 end
 
 
-mutable struct DiscreteTrains{R,N}
+mutable struct DiscreteSpikeTrains{R,N}
   n_units::N
   trains::BitArray{2} # trains[i,j] true if neuron i spikes at time j
   t_start::R
@@ -416,7 +416,7 @@ mutable struct DiscreteTrains{R,N}
   dt::R
 end
 
-function DiscreteTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) where R
+function DiscreteSpikeTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) where R
   n_units = size(trains,1)
   if t_end < 0.0
     t_end = dt*size(trains,2)
@@ -427,7 +427,7 @@ function DiscreteTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) where 
 end
 
 
-function SpikeTrains(discrete::DiscreteTrains{R,N}) where {R,N}
+function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
   n_units = discrete.n_units
   trains = Vector{Vector{R}}(undef,n_units)
   dt = discrete.dt
