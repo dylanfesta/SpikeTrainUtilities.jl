@@ -423,7 +423,7 @@ function DiscreteSpikeTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) w
   end
   @assert t_end > t_start "t_end must be larger than t_start"
   @assert t_end >= dt*size(trains,2) "t_end must be consistent!"
-  return DiscreteTrains(n_units,trains,t_start,t_end,dt)
+  return DiscreteSpikeTrains(n_units,trains,t_start,t_end,dt)
 end
 
 
