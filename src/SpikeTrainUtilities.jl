@@ -261,6 +261,29 @@ function pearson_correlation(trains::SpikeTrains{R,N},ij::Tuple{I,I},dt::Real;
         t_end=t_end,t_start=t_start)
 end
 
+# for the whole population
+function pearson_correlation(trains::SpikeTrains{R,N},dt::Real;
+    t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
+    nan_diag::Bool=true) where {R,N}
+  n = trains.n_units
+  ret = Matrix{R}(undef,n,n)
+  for i in 1:n
+    for j in 1:i-1
+      _ret = pearson_correlation(trains,(i,j),dt;
+      t_end=t_end,t_start=t_start)
+      ret[i,j] = _ret
+      ret[j,i] = _ret
+    end
+  end
+  if nan_diag
+    ret[diagind(ret)] .= NaN
+  else
+    ret[diagind(ret)] .= 1.0
+  end
+  return ret
+end
+
+
 """
   draw_spike_raster(trains::Vector{Vector{Float64}},
       dt::Real,Tend::Real;
