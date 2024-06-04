@@ -103,10 +103,17 @@ end
 ## analysis here
 
 # this is not optimized, one could use searchsortedfirst
-@inline function numerical_rate(T::Vector{R},t_start::R,t_end::R) where R
-  return count( spk ->  t_start<= spk <= t_end ,T)/(t_end-t_start)
-end
 
+@inline function count_spikes_in_interval(train::Vector{R},t_start::R,t_end::R) where R
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  idx_first = searchsortedfirst(train,t_start)
+  idx_last = searchsortedlast(train,t_end)
+  return idx_last - idx_first + 1
+end
+@inline function numerical_rate(train::Vector{R},t_start::R,t_end::R) where R
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  return count_spikes_in_interval(train,t_start,t_end)/(t_end-t_start)
+end
 
 """
   numerical_rates(S::SpikeTrains{R,N};t_start::R=0.0,t_end::R=Inf) where {R,N}
@@ -120,6 +127,11 @@ function numerical_rates(S::SpikeTrains{R,N};
   t_end = something(t_end,S.t_end)
   return [numerical_rate(train,t_start,t_end) for train in S.trains]
 end
+
+function count_spikes_in_interval(S::SpikeTrains{R,N},t_start::R,t_end::R) where {R,N}
+  return [count_spikes_in_interval(train,t_start,t_end) for train in S.trains]
+end
+
 
 
 """
