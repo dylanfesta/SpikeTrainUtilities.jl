@@ -108,3 +108,24 @@ end
   @test abs(mean(corr[1:nc÷2])) <  10*abs(mean(corr[nc÷2+1:end]))
 
 end
+
+@testset "Fano factor" begin
+  Ttot= 10_000.0
+  therates=[13.,107.,523.]
+  trains = U.make_random_spiketrains(therates,Ttot)
+
+  # variances should be close to means, for different time bins!
+  Δt_test = [1.0,10.0,20.0]
+
+  for neu_test in (1,2,3)
+    _expected_vars = therates[neu_test].*Δt_test 
+    _num_vars = [ U.variance_spike_count(trains,neu_test,Δt) for Δt in Δt_test]
+    for (ev,nv) in zip(_expected_vars,_num_vars)
+      @test isapprox(ev,nv,rtol=0.1)
+    end
+    _fanos = [ U.fano_factor_spike_count(trains,neu_test,Δt) for Δt in Δt_test]
+    for _f in _fanos
+      @test isapprox(_f,1.0,rtol=0.1)
+    end
+  end
+end

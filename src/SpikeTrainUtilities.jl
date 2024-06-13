@@ -222,6 +222,55 @@ function covariance_density_ij(S::SpikeTrains{R,N},ij::Tuple{I,I},dτ::Real,τma
 end
 
 
+function variance_spike_count(X::Vector{R},Δt::R;
+      t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
+      warn_empty::Bool=true) where {R}
+  # if empty, return 0.0
+  if (isempty(X) && warn_empty)
+    @warn "One of the spike trains is empty! Correlation set to 0.0"
+    return 0.0
+  end
+  t_end = something(t_end,X[end]- Δt)
+  t_start = something(t_start,max(0.0,X[1]- Δt))
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  binnedx = bin_spikes(X,Δt,t_end;t_start=t_start)[2]
+  return var(binnedx)
+end
+
+function variance_spike_count(S::SpikeTrains{R,N},i::I,Δt::R;
+      t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  train_i = S.trains[i]
+  t_start = something(t_start,S.t_start)
+  t_end = something(t_end,S.t_end)
+  return variance_spike_count(train_i,Δt;t_end=t_end,t_start=t_start)
+end
+
+function fano_factor_spike_count(X::Vector{R},Δt::R;
+         t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
+         warn_empty::Bool=true) where {R}
+  # if empty, return 0.0
+  if isempty(X) && warn_empty
+    @warn "The spike train is empty! Fano factor set to 0.0"
+    return 0.0
+  end
+  t_end = something(t_end,X[end]- Δt)
+  t_start = something(t_start,max(0.0,X[1]- Δt))
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  binnedx = bin_spikes(X,Δt,t_end;t_start=t_start)[2]
+  _var = var(binnedx)
+  _mean = mean(binnedx)
+  return _var/_mean
+end
+
+function fano_factor_spike_count(S::SpikeTrains{R,N},i::I,Δt::R;
+      t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  train_i = S.trains[i]
+  t_start = something(t_start,S.t_start)
+  t_end = something(t_end,S.t_end)
+  return fano_factor_spike_count(train_i,Δt;t_end=t_end,t_start=t_start)
+end
+
+
 function running_covariance_zero_lag(X::Vector{R},Y::Vector{R},Δt::Real,Δt_mean::Real;
         t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where R
   @assert Δt_mean > Δt

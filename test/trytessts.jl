@@ -2,10 +2,11 @@
 push!(LOAD_PATH, abspath(@__DIR__,".."))
 using SpikeTrainUtilities ; global const U = SpikeTrainUtilities
 using Makie,CairoMakie
+using Random
+Random.seed!(0)
 
 
 ##
-
 rate = 100.0
 T = 10_000.0
 train1 = U.make_poisson_samples(rate,T)
