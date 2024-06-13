@@ -270,6 +270,24 @@ function fano_factor_spike_count(S::SpikeTrains{R,N},i::I,Δt::R;
   return fano_factor_spike_count(train_i,Δt;t_end=t_end,t_start=t_start)
 end
 
+function coefficient_of_variation(X::Vector{R};
+    t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where R
+  t_start = something(t_start,X[1])
+  t_end = something(t_end,X[end])
+  idx_start = searchsortedfirst(X,t_start)
+  idx_end = searchsortedlast(X,t_end)
+  Xless = view(X,idx_start:idx_end)
+  Xdiff = diff(Xless)
+  return std(Xdiff)/mean(Xdiff) 
+end
+function coefficient_of_variation(S::SpikeTrains{R,N},i::I;
+    t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  train_i = S.trains[i]
+  t_start = something(t_start,S.t_start)
+  t_end = something(t_end,S.t_end)
+  return coefficient_of_variation(train_i;t_end=t_end,t_start=t_start)
+end
+
 
 function running_covariance_zero_lag(X::Vector{R},Y::Vector{R},Δt::Real,Δt_mean::Real;
         t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where R

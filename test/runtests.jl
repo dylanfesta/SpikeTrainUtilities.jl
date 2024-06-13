@@ -127,5 +127,7 @@ end
     for _f in _fanos
       @test isapprox(_f,1.0,rtol=0.1)
     end
+    _cv = U.coefficient_of_variation(trains,neu_test)
+    @test isapprox(_cv,1.0,rtol=0.1)
   end
 end
