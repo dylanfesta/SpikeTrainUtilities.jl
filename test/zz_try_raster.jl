@@ -9,7 +9,8 @@ Random.seed!(0)
 ##
 
 # helper for get_line_segments function
-function _line_segments_onetrain(train::Vector{<:Real},offset::Real,heigth_scaling::Real)
+function _line_segments_onetrain(train::Vector{<:Real},
+  neuron_offset::Real,time_offset::Real,heigth_scaling::Real)
   n_units = length(train)
   if n_units == 0
     # returns empty vector
@@ -17,7 +18,8 @@ function _line_segments_onetrain(train::Vector{<:Real},offset::Real,heigth_scali
   end
   npoints = n_units*2
   t_rep = repeat(train;inner=2)
-  xs_nofix = fill(offset,npoints)
+  t_rep .-= time_offset
+  xs_nofix = fill(neuron_offset,npoints)
   fixes = repeat([-0.5*heigth_scaling,0.5*heigth_scaling];outer=n_units)
   xs_fix = xs_nofix .+ fixes
   return collect(zip(t_rep,xs_fix))
@@ -52,7 +54,8 @@ function get_line_segments(spiketrains::U.SpikeTrains,
     t_start::Real,t_end::Real;
     heigth_scaling::Real=0.7,
     neurons::Union{Vector{Int},Nothing}=nothing,
-    offset::Real = 0.0,
+    neuron_offset::Real = 0.0,
+    time_offset::Union{Real,Nothing}=nothing,
     max_spikes::Real=1E6)
 
   ntot = spiketrains.n_units
@@ -62,6 +65,11 @@ function get_line_segments(spiketrains::U.SpikeTrains,
     @assert all(1 .<= neurons .<= ntot) "neurons must be between 1 and $ntot"
   else
     neurons = 1:ntot
+  end
+  if !isnothing(time_offset)
+    @assert time_offset >= t_end "time_offset is probably wrong"
+  else
+    time_offset = t_start
   end
   nneus = length(neurons)
 
@@ -79,7 +87,7 @@ function get_line_segments(spiketrains::U.SpikeTrains,
       Set a smaller time window, or fewer neruons.")
   end
   points_all = map(enumerate(trains_selected)) do (k,train)
-    _line_segments_onetrain(train,offset+k,heigth_scaling)
+    _line_segments_onetrain(train,neuron_offset+k,time_offset,heigth_scaling)
   end
   return vcat(points_all...)
 end
@@ -88,10 +96,10 @@ end
 ##
 
 rates = [5.,10.0,5.,100.0,1000000.0]
-T = 5.0
+T = 10.0
 testspiketrains = U.make_random_spiketrains(rates,T)
 
-points_linesegments = get_line_segments(testspiketrains,0.0,5.0;
+points_linesegments = get_line_segments(testspiketrains,1.0,6.0;
   neurons=[2,3],
   heigth_scaling=0.95)
 
