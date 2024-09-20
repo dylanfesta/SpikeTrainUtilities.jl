@@ -486,7 +486,7 @@ end
 
 # helper for get_line_segments function
 function _line_segments_onetrain(train::Vector{<:Real},
-  neuron_offset::Real,time_offset::Real,heigth_scaling::Real)
+  neuron_offset::Real,time_offset::Real,height_scaling::Real)
   n_units = length(train)
   if n_units == 0
     # returns empty vector
@@ -496,7 +496,7 @@ function _line_segments_onetrain(train::Vector{<:Real},
   t_rep = repeat(train;inner=2)
   t_rep .-= time_offset
   xs_nofix = fill(neuron_offset,npoints)
-  fixes = repeat([-0.5*heigth_scaling,0.5*heigth_scaling];outer=n_units)
+  fixes = repeat([-0.5*height_scaling,0.5*height_scaling];outer=n_units)
   xs_fix = xs_nofix .+ fixes
   return collect(zip(t_rep,xs_fix))
 end
@@ -504,7 +504,7 @@ end
 """
   function get_line_segments(spiketrains::SpikeTrains,
     t_start::Real,t_end::Real;
-    heigth_scaling::Real=0.7,
+    height_scaling::Real=0.7,
     neurons::Union{Vector{Int},Nothing}=nothing,
     offset::Real = 0.0,
     max_spikes::Real=1E6)
@@ -515,7 +515,7 @@ Returns point coordinates that can be used for line segments for a raster plot o
 - `spiketrains::SpikeTrains` : the spiketrains
 - `t_start::Real` : the starting time of the raster
 - `t_end::Real` : the ending time of the raster
-- `heigth_scaling::Real=0.7` : how tall each spike is, 1.0 is the full height
+- `height_scaling::Real=0.7` : how tall each spike is, 1.0 is the full height
 - `neurons::Union{Vector{Int},Nothing}=nothing` : the neurons to plot, if nothing all neurons are plotted
 - `neuron_offset::Real=0.0` : the y-offset of the raster
 - `time_offset::Real` : the time offset of the raster, default is `t_start`
@@ -529,7 +529,7 @@ Returns point coordinates that can be used for line segments for a raster plot o
 """
 function get_line_segments(spiketrains::SpikeTrains,
     t_start::Real,t_end::Real;
-    heigth_scaling::Real=0.7,
+    height_scaling::Real=0.7,
     neurons::Union{Vector{Int},Nothing}=nothing,
     neuron_offset::Real = 0.0,
     time_offset::Union{Real,Nothing}=nothing,
@@ -564,7 +564,7 @@ function get_line_segments(spiketrains::SpikeTrains,
       Set a smaller time window, or fewer neruons.")
   end
   points_all = map(enumerate(trains_selected)) do (k,train)
-    _line_segments_onetrain(train,neuron_offset+k,time_offset,heigth_scaling)
+    _line_segments_onetrain(train,neuron_offset+k,time_offset,height_scaling)
   end
   return vcat(points_all...)
 end
