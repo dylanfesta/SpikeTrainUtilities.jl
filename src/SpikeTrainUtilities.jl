@@ -245,6 +245,34 @@ function variance_spike_count(S::SpikeTrains{R,N},i::I,Δt::R;
   return variance_spike_count(train_i,Δt;t_end=t_end,t_start=t_start)
 end
 
+function covariance_spike_count(X::Vector{R},Y::Vector{R},Δt::R;
+    t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
+    warn_empty::Bool=true) where {R}
+  # if empty, return 0.0
+  if (isempty(X) && warn_empty)
+  @warn "One of the spike trains is empty! Correlation set to 0.0"
+  return 0.0
+  end
+  t_end = something(t_end,X[end]- Δt)
+  t_start = something(t_start,max(0.0,X[1]- Δt))
+  @assert t_start < t_end "t_start must be smaller than t_end"
+  binnedx = bin_spikes(X,Δt,t_end;t_start=t_start)[2]
+  binnedy = bin_spikes(Y,Δt,t_end;t_start=t_start)[2]
+  binnedx_norm = binnedx .- mean(binnedx)
+  binnedy_norm = binnedy .- mean(binnedy)
+  return dot(binnedx_norm,binnedy_norm)/(length(binnedx)-1)
+end
+
+function covariance_spike_count(S::SpikeTrains{R,N},i::I,j::I,Δt::R;
+      t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing) where {R,N,I<:Integer}
+  train_i = S.trains[i]
+  train_j = S.trains[j]
+  t_start = something(t_start,S.t_start)
+  t_end = something(t_end,S.t_end)
+  return covariance_spike_count(train_i,train_j,Δt;t_end=t_end,t_start=t_start)
+end
+
+
 function fano_factor_spike_count(X::Vector{R},Δt::R;
          t_end::Union{R,Nothing}=nothing,t_start::Union{R,Nothing}=nothing,
          warn_empty::Bool=true) where {R}
