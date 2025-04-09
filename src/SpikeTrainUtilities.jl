@@ -133,6 +133,28 @@ function count_spikes_in_interval(S::SpikeTrains{R,N},t_start::R,t_end::R) where
 end
 
 
+"""
+    bin_spikes(Y::Vector{R},binvector::Vector{R}) where R
+# Arguments
+  + `Y::Vector{<:Real}` : vector of spike times
+  + `binvector::AbstractVector{<:Real}` : vector of bin edges
+# Returns
+  + `times_bin::Vector{R}` : `times_bin[k]` is the midpoint of the timebin `k` (i.e. `binvector[k] + (binvector[k+1]-binvector[k])/2`)   
+  + `binned_spikes::Vector{<:Integer}` : `binned_spikes[k]` is the number of spikes that occur 
+      in the timebin `k`  (i.e. between `binvector[k]` and `binvector[k+1]`)
+"""
+function bin_spikes(Y::Vector{R},binvector::AbstractVector{R}) where R<:Real
+  # assert is sorted 
+  @assert issorted(binvector) "binvector must be sorted!"
+  ret = fill(0,length(binvector)-1)
+  for y in Y
+    if binvector[1] < y <= last(binvector)
+      k = searchsortedfirst(binvector,y)-1
+      ret[k] += 1
+    end
+  end
+  return midpoints(binvector),ret
+end
 
 """
     bin_spikes(Y::Vector{R},dt::R,Tend::R;Tstart::R=0.0) where R
@@ -150,17 +172,29 @@ end
       in the timebin `k`  (i.e. between `Tstart + (k-1)*dt` and `Tstart + k*dt`)
 """
 function bin_spikes(Y::Vector{R},dt::R,t_end::R;t_start::R=0.0) where R
-  times = range(t_start,t_end;step=dt)  
-  ret = fill(0,length(times)-1)
-  for y in Y
-    if t_start < y <= last(times)
-      k = searchsortedfirst(times,y)-1
-      ret[k] += 1
-    end
-  end
-  return midpoints(times),ret
+  thebins = range(t_start,t_end;step=dt) |> collect
+  return bin_spikes(Y,thebins)
+  # ret = fill(0,length(times)-1)
+  # for y in Y
+  #   if t_start < y <= last(times)
+  #     k = searchsortedfirst(times,y)-1
+  #     ret[k] += 1
+  #   end
+  # end
+  # return midpoints(times),ret
 end
 
+
+"""
+    bin_spikes(S::SpikeTrains{R,N},dt::R) where {R,N}
+# Arguments
+  + S : SpikeTrains object
+  + dt : time bin size
+# Returns
+  + times_bin::Vector{R} : `times_bin[k]` is the midpoint of the timebin `k` (i.e. `S.t_start + (k-1/2)*dt`)   
+  + `binned_spikes::Matrix{<:Integer}` : `binned_spikes[k,i]` is the number of spikes that occur 
+      in the timebin `k` for neuron `i`  (i.e. between `S.t_start + (k-1)*dt` and `S.t_start + k*dt`)
+"""
 function bin_spikes(S::SpikeTrains{R,N},dt::R) where {R,N}
   nbins = Int64(div(delta_t(S),dt))
   times = range(S.t_start,S.t_end;length=nbins+1)
@@ -176,9 +210,41 @@ function bin_spikes(S::SpikeTrains{R,N},dt::R) where {R,N}
   return midpoints(times),binned
 end
 
+"""
+    bin_spikes(S::SpikeTrains{R,N},binvector::Vector{R}) where {R,N}
+# Arguments
+  + S : SpikeTrains object
+  + binvector : vector of bin edges
+# Returns
+  + times_bin::Vector{R} : `times_bin[k]` is the midpoint of the timebin `k` (i.e. `binvector[k] + (binvector[k+1]-binvector[k])/2`)   
+  + `binned_spikes::Matrix{<:Integer}` : `binned_spikes[k,i]` is the number of spikes that occur 
+      in the timebin `k` for neuron `i`  (i.e. between `binvector[k]` and `binvector[k+1]`)
+"""
+function bin_spikes(S::SpikeTrains{R,N},binvector::Vector{R}) where {R,N}
+  # assert is sorted 
+  @assert issorted(binvector) "binvector must be sorted!"
+  ret = fill(0,(length(binvector)-1,S.n_units))
+  for (neu,train) in enumerate(S.trains)
+    for y in train
+      if binvector[1] < y <= last(binvector)
+        k = searchsortedfirst(binvector,y)-1
+        ret[k,neu] += 1
+      end
+    end
+  end
+  return midpoints(binvector),ret
+end
+
+
 function instantaneous_rates(S::SpikeTrains{R,N},dt::R) where {R,N}
   times,binned = bin_spikes(S,dt)
   return times,binned ./ dt
+end
+
+function instantaneous_rates(S::SpikeTrains{R,N},binvector::Vector{R}) where {R,N}
+  times,binned = bin_spikes(S,binvector)
+  deltats = diff(binvector)
+  return times,(binned ./ deltats)
 end
 
 

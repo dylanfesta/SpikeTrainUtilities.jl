@@ -3,10 +3,49 @@ push!(LOAD_PATH, abspath(@__DIR__,".."))
 using SpikeTrainUtilities ; global const U = SpikeTrainUtilities
 using Makie,CairoMakie
 using Random
-Random.seed!(0)
+using Distributions
+Random.seed!(0);
+import StatsBase: midpoints
+
+##
+
+n_borders = 33
+
+borders = rand(Uniform(66.0,99.0),n_borders) |> sort
+
+n_spikes1 = [ rand(0:100) for _ in 1:n_borders-1]
+n_spikes2 = [ rand(0:100) for _ in 1:n_borders-1]
+
+fake_spikes1 = let ret=[]
+  for i in 1:n_borders-1
+    push!(ret,rand(Uniform(borders[i],borders[i+1]),n_spikes1[i]))
+  end
+  vcat(ret...)
+end
+fake_spikes2 = let ret=[]
+  for i in 1:n_borders-1
+    push!(ret,rand(Uniform(borders[i],borders[i+1]),n_spikes2[i]))
+  end
+  vcat(ret...)
+end
+
+_,n_spikes1_check=U.bin_spikes(fake_spikes1,borders)
+
+_spiketrain = U.SpikeTrains([fake_spikes1,fake_spikes2];t_start=0.0,t_end=100.0)
+
+_, n_spikes_check = U.bin_spikes(_spiketrain,borders)
+@assert all(n_spikes_check[:,1] .== n_spikes1)
+@assert all(n_spikes_check[:,2] .== n_spikes2)
+
+
+mid_p, instrates = U.instantaneous_rates(_spiketrain,borders)
+
+all(isapprox.(mid_p,midpoints(borders)))
+all(isapprox.(instrates[:,1],n_spikes1./diff(borders)))
 
 
 ##
+
 rate = 100.0
 T = 10_000.0
 train1 = U.make_poisson_samples(rate,T)
