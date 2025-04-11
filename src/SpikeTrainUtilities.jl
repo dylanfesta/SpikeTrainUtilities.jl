@@ -17,19 +17,21 @@ end
 
 function SpikeTrains(trains::Vector{Vector{R}}; 
       t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R}
-  _last(v) = ifelse(isempty(v),-Inf,last(v))
-  t_start = something(t_start,zero(R))
-  t_end = something(t_end, maximum(_last,trains)+ 10*eps(R))
+  _last(v) = ifelse(isempty(v),zero(R),last(v))
+  _t_start = something(t_start,zero(R))
+  _t_end = something(t_end, maximum(_last,trains)+ 10*eps(R))
+  # let's trim to t_end (also a good idea to copy the vectors!)
+  _new_trains = map(tr -> !isnothing(t_end) ? filter(<(t_end), tr) : copy(tr), trains) # copy the trains
   n = length(trains)
-  return SpikeTrains(n,trains,t_start,t_end)
+  return SpikeTrains(n,_new_trains,_t_start,_t_end)
 end
 
 
 # constructor from spiketimes and spikeneurons
 function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
     nneus::Integer;t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
-  t_start = something(t_start,spiketimes[1] - 10*eps(R))
-  t_end = something(t_end,spiketimes[end] + 10*eps(R))
+  _t_start = something(t_start,spiketimes[1] - 10*eps(R))
+  _t_end = something(t_end,spiketimes[end] + 10*eps(R))
   trains = Vector{Vector{R}}(undef,nneus)
   for neu in 1:nneus
     idxspike = spikeneurons .== neu
@@ -39,7 +41,14 @@ function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
       trains[neu] = Vector{R}()
     end 
   end
-  return SpikeTrains(nneus,trains,t_start,t_end)
+  # trim in place based on t_end, unoptimized
+  if !isnothing(t_end)
+    for _train in trains
+      idx_delete = findall(>=(t_end),_train)
+      deleteat!(_train,idx_delete)
+    end
+  end
+  return SpikeTrains(nneus,trains,_t_start,_t_end)
 end
 
 function delta_t(S::SpikeTrains{R,N}) where {R,N}
