@@ -104,3 +104,36 @@ function Base.merge(S::SpikeTrains{R,N}...) where {R,N}
   @assert length(new_trains) == new_n_units "Something went wrong"
   return SpikeTrains(new_n_units,new_trains,t_start,new_tend)
 end
+
+
+mutable struct DiscreteSpikeTrains{R,N}
+  n_units::N
+  trains::BitArray{2} # trains[i,j] true if neuron i spikes at time j
+  t_start::R
+  t_end::R
+  dt::R
+end
+
+function DiscreteSpikeTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) where R
+  n_units = size(trains,1)
+  if t_end < 0.0
+    t_end = dt*size(trains,2)
+  end
+  @assert t_end > t_start "t_end must be larger than t_start"
+  @assert t_end >= dt*size(trains,2) "t_end must be consistent!"
+  return DiscreteSpikeTrains(n_units,trains,t_start,t_end,dt)
+end
+
+
+function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
+  n_units = discrete.n_units
+  trains = Vector{Vector{R}}(undef,n_units)
+  dt = discrete.dt
+  t_offset = discrete.t_start - 0.5*dt
+  for neu in 1:n_units
+    trains[neu] = map( x->t_offset+dt*x,findall(discrete.trains[neu,:]))
+  end
+  return SpikeTrains(n_units,trains,discrete.t_start,discrete.t_end)
+end
+
+
