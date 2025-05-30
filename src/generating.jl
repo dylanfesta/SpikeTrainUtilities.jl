@@ -15,9 +15,12 @@ function make_poisson_samples(rate::R,t_tot::R) where R
 end
 
 function make_random_spiketrains(rates::Vector{R},duration::R;t_start=zero(R)) where R 
+  n = length(rates)
+  @assert n > 0 "Rates vector must not be empty"
+  neus = collect(1:n) 
   trains = make_poisson_samples.(rates,duration)
   if !iszero(t_start)
     foreach(tr->(tr.+=t_start;nothing),trains)
   end
-  return SpikeTrains(length(rates),trains,t_start,t_start+duration)
+  return SpikeTrains(n,neus,trains,t_start,t_start+duration)
 end

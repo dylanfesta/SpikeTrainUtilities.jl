@@ -4,55 +4,98 @@
 
 Constructs a SpikeTrains object.  
 """
-mutable struct SpikeTrains{R,N}
+mutable struct SpikeTrains{R,N,T}
   n_units::N
+  units::Vector{T} # this is to index the units
   trains::Vector{Vector{R}}
   t_start::R
   t_end::R
 end 
 
-function SpikeTrains(trains::Vector{Vector{R}}; 
-      t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R}
+function SpikeTrains(trains::Vector{Vector{R}};
+      units::Union{Vector{T},Nothing}=nothing,
+      t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R,T}
   _last(v) = ifelse(isempty(v),zero(R),last(v))
   _t_start = something(t_start,zero(R))
   _t_end = something(t_end, maximum(_last,trains)+ 10*eps(R))
-  # let's trim to t_end (also a good idea to copy the vectors!)
-  _new_trains = map(tr -> !isnothing(t_end) ? filter(<(t_end), tr) : copy(tr), trains) # copy the trains
-  n = length(trains)
-  return SpikeTrains(n,_new_trains,_t_start,_t_end)
+  # let's trim (also a good idea to copy the vectors!)
+  _new_trains = map(tr -> filter(_t -> t_start <= _t <= t_end, tr) , trains) # copy the trains
+  # remove empty trains, and if units are present, remove the corresponding units
+  idx_del = findall(isempty, _new_trains)
+  deleteat!(_new_trains, idx_del)
+  n = length(_new_trains)
+  if isnothing(units)
+    _units = collect(1:n)
+  else
+    _units = deepcopy(units)
+    deleteat!(_units, idx_del) # remove the corresponding units
+    @assert length(_units) == n "Number of units must match n_units"
+  end
+  return SpikeTrains(n, _units, _new_trains, _t_start, _t_end)
 end
-
 
 # constructor from spiketimes and spikeneurons
-function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
-    nneus::Integer;t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
-  _t_start = something(t_start,spiketimes[1] - 10*eps(R))
-  _t_end = something(t_end,spiketimes[end] + 10*eps(R))
-  trains = Vector{Vector{R}}(undef,nneus)
-  for neu in 1:nneus
-    idxspike = spikeneurons .== neu
-    if any(idxspike)
-      trains[neu] = spiketimes[idxspike]
-    else
-      trains[neu] = Vector{R}()
-    end 
+function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I}; 
+    t_start::Union{R,Nothing}=nothing, t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
+
+  @assert !isempty(spiketimes) "spiketimes cannot be empty"
+
+  # The 10*eps adjustment is to ensure derived intervals are inclusive of min/max spikes.
+  (min_st,max_st) = extrema(spiketimes)
+  @assert all(isfinite, [min_st, max_st]) "spiketimes must be finite numbers"
+  eff_t_start = something(t_start, min_st - 10*eps(R))
+  eff_t_end = something(t_end, max_st + 10*eps(R))
+  @assert eff_t_end >= eff_t_start "t_end must be larger than t_start"
+  # check if spiketimes need to be trimmed
+  if eff_t_start > min_st || eff_t_end < max_st
+    # Trim
+    idx_trim = findall(t -> eff_t_start <= t <= eff_t_end, spiketimes)
+    spiketimes = spiketimes[idx_trim]
+    spikeneurons = spikeneurons[idx_trim]
+    @assert !isempty(spiketimes) "spiketimes cannot be empty after trimming"
   end
-  # trim in place based on t_end, unoptimized
-  if !isnothing(t_end)
-    for _train in trains
-      idx_delete = findall(>=(t_end),_train)
-      deleteat!(_train,idx_delete)
-    end
+
+  # Generate units vector from actual neuron IDs reported in spikeneurons
+  actual_units = sort(unique(spikeneurons))
+  n_actual_units = length(actual_units)
+
+  # Create trains corresponding to actual_units
+  actual_trains = Vector{Vector{R}}(undef, n_actual_units)
+  for i in 1:n_actual_units
+    actual_trains[i] = R[] # Initialize with empty spike lists
   end
-  return SpikeTrains(nneus,trains,_t_start,_t_end)
+
+  # Populate trains, filtering by time.
+  # Create a map from unit ID to index in actual_trains for efficient lookup.
+  unit_to_idx_map = Dict{I, Int}()
+  for (i, unit_id) in enumerate(actual_units)
+    unit_to_idx_map[unit_id] = i
+  end
+
+  for k in eachindex(spiketimes)
+    neuron_id = spikeneurons[k]
+    spike_time = spiketimes[k]
+    idx = get(unit_to_idx_map, neuron_id, 0) # Get index for this neuron_id
+    @assert idx > 0 "Neuron ID $neuron_id not found in actual units"
+    push!(actual_trains[idx], spike_time) # Spike times are added in order, so trains remain sorted if spiketimes is sorted.
+  end
+  return SpikeTrains(n_actual_units, actual_units, actual_trains, eff_t_start, eff_t_end)
 end
 
-function duration(S::SpikeTrains{R,N}) where {R,N}
+
+# for compatibility with old code
+function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
+    nneus::Integer; t_start::Union{R,Nothing}=nothing, t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
+  return SpikeTrains(spiketimes, spikeneurons;t_start=t_start, t_end=t_end)
+end
+  
+
+function duration(S::SpikeTrains{R,N,T}) where {R,N,T}
   return S.t_end - S.t_start
 end
 
 
-function Base.cat(S::SpikeTrains{R,N}...;dims::Int=1) where {R,N}
+function Base.cat(S::SpikeTrains{R,N,T}...;dims::Int=1) where {R,N,T}
   @assert dims == 1 "dim can only be one"
   # check same number of units
   n_units = S[1].n_units
@@ -69,6 +112,13 @@ function Base.cat(S::SpikeTrains{R,N}...;dims::Int=1) where {R,N}
     end
     t_check = s.t_end
   end
+  # check that units are consistent and with same oreder
+  the_units = S[1].units
+  for s in S[2:end]
+    if !all( s.units .== the_units )
+      error("SpikeTrains must have same units")
+    end
+  end
   # okay, now cat
   t_start = S[1].t_start
   t_end = S[end].t_end
@@ -76,21 +126,22 @@ function Base.cat(S::SpikeTrains{R,N}...;dims::Int=1) where {R,N}
   for i in 1:n_units
     trains[i] = cat([s.trains[i] for s in S]...,dims=1)
   end
-  return  SpikeTrains(n_units,trains,t_start,t_end)
+  return  SpikeTrains(n_units,the_units,trains,t_start,t_end)
 end
 
-@inline function Base.minimum(S::SpikeTrains{R,N}) where {R,N}
+@inline function Base.minimum(S::SpikeTrains{R,N,T}) where {R,N,T}
   _first(v) = ifelse(isempty(v),Inf,first(v))
   minimum(_first, S.trains)
 end
-@inline function Base.maximum(S::SpikeTrains{R,N}) where {R,N}
+@inline function Base.maximum(S::SpikeTrains{R,N,T}) where {R,N,T}
   _last(v) = ifelse(isempty(v),-Inf,last(v))
   maximum(last, S.trains)
 end
 
 
 # This is to merge them together, horizontally, so to speak
-function Base.merge(S::SpikeTrains{R,N}...) where {R,N}
+# TO-DO ... how to deal with same units????
+function Base.merge(S::SpikeTrains{R,N,T}...) where {R,N,T}
   ntrains = length(S)
   if ntrains == 1
     return S[1]
@@ -124,6 +175,9 @@ function DiscreteSpikeTrains(trains::BitArray{2},dt::R;t_start=0.0,t_end=-1.0) w
   return DiscreteSpikeTrains(n_units,trains,t_start,t_end,dt)
 end
 
+function duration(S::DiscreteSpikeTrains{R,N}) where {R,N}
+  return S.t_end - S.t_start
+end
 
 function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
   n_units = discrete.n_units
@@ -137,3 +191,38 @@ function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
 end
 
 
+# Spike quantity is for quantities that I can associate to the discrete spike events
+# mostly instantaneous firing rates, defined as 1/ISI
+
+struct SpikeQuantity{R,N,T}
+  n_units::N
+  units::Vector{T} # this is to index the units, T can be any type
+  event_times::Vector{Vector{R}}
+  ys::Vector{Vector{R}}
+  t_start::R
+  t_end::R
+  quantity::Symbol # e.g. :spikes, :isi, :psth, etc.
+end
+
+function duration(S::SpikeQuantity{R,N,T}) where {R,N,T}
+  return S.t_end - S.t_start
+end
+
+function SpikeQuantity(n_units::N,event_times::Vector{Vector{R}},
+    ys::Vector{Vector{R}}; 
+    units::Union{Vector{T},Nothing}=nothing,
+    t_start::Union{R,Nothing}=nothing,t_end::Union{R,Nothing}=nothing,
+    quantity::Symbol=:spikes) where {R,N,T}
+  _t_start = something(t_start,minimum(event_times))
+  _t_end = something(t_end,maximum(event_times))
+  @assert length(event_times) == n_units "Number of event times must match n_units"
+  @assert length(ys) == n_units "Number of ys must match n_units"
+  @assert all(length.(event_times) .== length.(ys)) "Each unit must have the same number of events and ys"
+  if isnothing(units)
+    _units = collect(1:n_units)
+  else
+    _units = deepcopy(units)
+    @assert length(_units) == n_units "Number of units must match n_units"
+  end
+  return SpikeQuantity(n_units,_units,event_times,ys,_t_start,_t_end,quantity)
+end
