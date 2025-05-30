@@ -2,6 +2,7 @@
 *.jl.cov
 *.jl.mem
 /docs/build/
-
+.env
+.vscode/
 # ignore all of them
 Manifest.toml
