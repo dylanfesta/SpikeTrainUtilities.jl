@@ -171,3 +171,35 @@ end
     @test isapprox(_cv,1.0,rtol=0.1)
   end
 end
+
+
+@testset "Counting spikes, using structs" begin
+  n  = 44
+  rates1 = 60 .* rand(n) 
+  T = 1000.0
+  dt = 0.1
+  trains1 = U.make_random_spiketrains(rates1,T)
+  trains_bincounts = U.discretize(trains1,dt,U.BinCount())
+  edges_test1 = U.get_t_edges(trains1,dt)
+  edges_test2 = U.get_t_edges(trains_bincounts)
+  @test all(edges_test1 .== edges_test2)
+  for (k,_train) in enumerate(trains1.trains)
+    @test length(_train) == sum(trains_bincounts.ys[k,:])
+  end
+end
+
+@testset "Instantaneous firing rates" begin
+  
+  n  = 44
+  ratestest = 250 .* rand(n) 
+  T = 1000.0
+  trainstest = U.make_random_spiketrains(ratestest,T)
+
+  # compute iFR with cutoff at 5ms
+  iFRs = U.get_instantaneous_firing_rates(trainstest; dt_min=5E-3)
+
+  # test they are all below 200 Hz
+  for y in iFRs.ys
+    @test all(<=(200.0),y)
+  end
+end

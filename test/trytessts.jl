@@ -9,6 +9,31 @@ import StatsBase: midpoints
 
 ##
 
+
+n  = 44
+rates1 = 250 .* rand(n) 
+T = 1000.0
+trainstest = U.make_random_spiketrains(rates1,T)
+
+# compute iFR with cutoff at 5ms
+
+iFRs = U.get_instantaneous_firing_rates(trainstest; dt_min=5E-3)
+
+# test they are all below 200 Hz
+for y in iFRs.ys
+  @assert all(<=(200.0),y)
+end
+
+##
+
+iFRs_maxpool = U.discretize(iFRs,0.1,U.BinMaxPooling())
+
+##
+
+error()
+
+##
+
 n_borders = 33
 
 borders = rand(Uniform(66.0,99.0),n_borders) |> sort

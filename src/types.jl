@@ -226,3 +226,74 @@ function SpikeQuantity(n_units::N,event_times::Vector{Vector{R}},
   end
   return SpikeQuantity(n_units,_units,event_times,ys,_t_start,_t_end,quantity)
 end
+
+struct BinnedSpikeQuantity{R,RT,N,T}
+  n_units::N
+  n_bins::N
+  ys::Matrix{R} # ys[i,j] is the value for unit i at bin j, therefore size(ys) == (n_units,n_bins)
+  dt::RT # bin width
+  units::Vector{T} # this is to index the units, T can be any type
+  t_start::RT
+  t_end::RT
+  quantity::Symbol # e.g. :spikes, :isi, :psth, etc.
+end
+
+function duration(S::BinnedSpikeQuantity{R,N,T}) where {R,N,T}
+  return S.t_end - S.t_start
+end
+
+function check_time_consistency(S::BinnedSpikeQuantity{R,N,T}) where {R,N,T}
+  @assert S.t_start <= S.t_end "t_start must be less than or equal to t_end"
+  @assert S.n_bins > 0 "n_bins must be greater than zero"
+  @assert S.dt > 0.0 "dt must be greater than zero"
+  @assert isapprox(duration(S),S.n_bins * S.dt) "t_end must match t_start + n_bins * dt"
+  return nothing
+end
+
+
+function get_t_midpoints(S::BinnedSpikeQuantity{R,N,T}) where {R,N,T}
+  return collect(range(S.t_start + 0.5*S.dt; length=S.n_bins, step=S.dt))
+end
+
+function get_t_edges(S::BinnedSpikeQuantity{R,N,T}) where {R,N,T}
+  return collect(range(S.t_start; length=S.n_bins+1, step=S.dt))
+end
+
+function get_t_edges(trs::Union{SpikeTrains{R,N,T},SpikeQuantity{R,N,T}},dt::R) where {R,N,T}
+  t_start = max(0.0,trs.t_start-10.0*eps(R)) # in case it's the first spike
+  Δt = duration(trs)
+  n_bins = Int64(fld(Δt+eps(Δt), dt)) + 1 # number of bins
+  return collect(range(t_start; length=n_bins, step=dt))
+end
+
+function get_t_midpoints(trs::Union{SpikeTrains{R,N,T},SpikeQuantity{R,N,T}},dt::R) where {R,N,T}
+  t_edges = get_t_edges(trs,dt)
+  return (t_edges[1:end-1] .+ t_edges[2:end]) ./ 2.0
+end
+
+
+# now, the binning methods, for now I keep the dt outside... is this the best way?
+abstract type AbstractBinning end
+
+# This is a binning method that sums the values in each bin
+struct BinSum <: AbstractBinning end
+
+# This is a binning method that averages the values in each bin
+struct BinMean <: AbstractBinning  end
+
+# This is a binning method that counts the number of events in each bin
+struct BinCount <: AbstractBinning end
+
+# This is the number of events divided by the bin width
+struct BinRate <: AbstractBinning end
+
+# This is a binning method that takes the maximum value in each bin
+struct BinMaxPooling <: AbstractBinning end
+
+struct BinGaussianKernel <: AbstractBinning
+  σ::Real # standard deviation of the Gaussian kernel
+end
+
+struct BinCausalGaussianKernel <: AbstractBinning
+  σ::Real # standard deviation of the Gaussian kernel
+end
