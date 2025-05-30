@@ -19,7 +19,7 @@ function SpikeTrains(trains::Vector{Vector{R}};
   _t_start = something(t_start,zero(R))
   _t_end = something(t_end, maximum(_last,trains)+ 10*eps(R))
   # let's trim (also a good idea to copy the vectors!)
-  _new_trains = map(tr -> filter(_t -> t_start <= _t <= t_end, tr) , trains) # copy the trains
+  _new_trains = map(tr -> filter(_t -> _t_start <= _t <= _t_end, tr) , trains) # copy the trains
   # remove empty trains, and if units are present, remove the corresponding units
   idx_del = findall(isempty, _new_trains)
   deleteat!(_new_trains, idx_del)
