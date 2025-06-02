@@ -9,7 +9,23 @@ import StatsBase: midpoints
 
 ##
 
+n  = 44
+rates1 = 60 .* rand(n) 
+T = 1000.0
+dt = 0.1
+trains1 = U.make_random_spiketrains(rates1,T)
+trains_bincounts = U.discretize(trains1,dt,U.BinCount())
+edges_test1 = U.get_t_edges(trains1,dt)
+edges_test2 = U.get_t_edges(trains_bincounts)
+@assert all(edges_test1 .== edges_test2)
+for (k,_train) in enumerate(trains1.trains)
+  _train_less = _train[_train .< trains_bincount.t_end]
+  @assert length(_train_less) == sum(trains_bincounts.ys[k,:])
+end
 
+##
+error()
+##
 n  = 44
 rates1 = 250 .* rand(n) 
 T = 1000.0

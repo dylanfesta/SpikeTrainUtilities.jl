@@ -184,7 +184,8 @@ end
   edges_test2 = U.get_t_edges(trains_bincounts)
   @test all(edges_test1 .== edges_test2)
   for (k,_train) in enumerate(trains1.trains)
-    @test length(_train) == sum(trains_bincounts.ys[k,:])
+    _train_lesstime = _train[_train .< trains_bincounts.t_end]
+    @test length(_train_lesstime) == sum(trains_bincounts.ys[k,:])
   end
 end
 
