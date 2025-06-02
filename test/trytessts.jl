@@ -13,11 +13,13 @@ import StatsBase: midpoints
 n  = 44
 rates1 = 250 .* rand(n) 
 T = 1000.0
-trainstest = U.make_random_spiketrains(rates1,T)
+trainstest = let _tr =  U.make_random_spiketrains(rates1,T)
+  U.SpikeTrains(_tr.trains)
+end
 
 # compute iFR with cutoff at 5ms
-
 iFRs = U.get_instantaneous_firing_rates(trainstest; dt_min=5E-3)
+
 
 # test they are all below 200 Hz
 for y in iFRs.ys
@@ -25,6 +27,12 @@ for y in iFRs.ys
 end
 
 ##
+iFRs.t_end
+dt_test = 0.1
+duration = U.duration(iFRs)
+t_edges = U.get_t_edges(trainstest,0.1)
+n_bins = length(t_edges)-1
+n_bins*dt_test
 
 iFRs_maxpool = U.discretize(iFRs,0.1,U.BinMaxPooling())
 

@@ -184,13 +184,14 @@ end
 function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinSum) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
+  new_t_end=t_edges[end]
   n_bins = length(edges) - 1
   ret_y = Matrix{R}(undef, n_units,n_bins)
   for i in 1:n_units
     ret_y[i,:] = _sum_between_edges(spkq.event_times[i], spkq.ys[i], t_edges)
   end
   ret = BinnedSpikeQuantity(n_units, n_bins,ret_y, dt,
-    spkq.units,spkq.t_start, spkq.t_end,:binned_sum)
+    spkq.units,spkq.t_start, new_t_end,:binned_sum)
   check_time_consistency(ret)
   return ret
 end
@@ -198,13 +199,14 @@ end
 function discretize(spkq::SpikeTrains{R,N,T}, dt::R,::BinCount) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
+  new_t_end=t_edges[end]
   n_bins = length(t_edges) - 1
   ret_y = Matrix{N}(undef, n_units,n_bins)
   for k in 1:n_units
     ret_y[k,:] = _count_between_edges(spkq.trains[k], t_edges)
   end
   ret = BinnedSpikeQuantity(n_units, n_bins,ret_y, dt,
-    spkq.units,spkq.t_start, spkq.t_end,:binned_spike_count)
+    spkq.units,spkq.t_start, new_t_end,:binned_spike_count)
   check_time_consistency(ret)
   return ret
 end
@@ -212,13 +214,14 @@ end
 function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMean) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
+  new_t_end=t_edges[end]
   n_bins = length(t_edges) - 1
   ret_y = Matrix{R}(undef, n_units,n_bins)
   for i in 1:n_units
     ret_y[i,:] = _average_between_edges(spkq.event_times[i], spkq.ys[i], t_edges)
   end
   ret = BinnedSpikeQuantity(n_units, n_bins,ret_y, dt,
-    spkq.units,spkq.t_start, spkq.t_end,:binned_mean)
+    spkq.units,spkq.t_start, new_t_end,:binned_mean)
   check_time_consistency(ret)
   return ret
 end
@@ -228,13 +231,14 @@ end
 function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMaxPooling) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
+  new_t_end = t_edges[end]
   n_bins = length(t_edges) - 1
   ret_y = Matrix{R}(undef, n_units,n_bins)
   for i in 1:n_units
     ret_y[i,:] = _max_pooling_between_edges(spkq.event_times[i], spkq.ys[i], t_edges)
   end
   ret = BinnedSpikeQuantity(n_units, n_bins,ret_y, dt,
-    spkq.units,spkq.t_start, spkq.t_end,:binned_maxpooling)
+    spkq.units,spkq.t_start, new_t_end,:binned_maxpooling)
   check_time_consistency(ret)
   return ret
 end
