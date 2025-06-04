@@ -262,7 +262,7 @@ end
 function get_t_edges(trs::Union{SpikeTrains{R,N,T},SpikeQuantity{R,N,T}},dt::R) where {R,N,T}
   t_start = max(0.0,trs.t_start-10.0*eps(R)) # in case it's the first spike
   Δt = duration(trs)
-  n_bins = Int64(fld(Δt+eps(Δt), dt))  # number of bins
+  n_bins = Int64(fld(Δt+eps(Δt), dt)) + 1  # number of bins
   return collect(range(t_start; length=n_bins, step=dt))
 end
 

@@ -244,4 +244,123 @@ function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMaxPooling) where {R,
 end
 
 
+function discretize(spkq::SpikeTrains{R,N,T}, dt::R, binning::BinGaussianKernel) where {R,N,T}
+  n_units = spkq.n_units
+  # Calculate bin centers based on the spike train's time range and dt
+  t_centers = get_t_midpoints(spkq, dt)
+  n_bins = length(t_centers)
+  σ = binning.σ
 
+  # Initialize the result matrix for binned values
+  ret_y = zeros(R, n_units, n_bins)
+
+  # Gaussian kernel function (unnormalized)
+  # G(t_diff) = exp(-(t_diff^2) / (2 * σ^2))
+  g(t_diff, sigma) = exp(-(t_diff^2) / (2 * sigma^2))
+
+  # Define a cutoff for kernel influence (e.g., 4 standard deviations)
+  # Spikes outside this range contribute negligibly to a bin
+  cutoff_sigma_multiplier = 4.0
+  time_cutoff = cutoff_sigma_multiplier * σ
+
+  # Iterate through each unit
+  for i in 1:n_units
+    current_train = spkq.trains[i]
+
+    # Iterate through each spike in the current train
+    for t_spike in current_train
+      # Calculate the range of bin centers potentially affected by this spike
+      # A bin center k is located at t_start + (k-1 + 0.5) * dt
+      # We are interested in bins where |t_spike - t_center_k| <= time_cutoff
+      # t_spike - time_cutoff <= t_start + (k-1 + 0.5) * dt <= t_spike + time_cutoff
+      # Rearranging for k-1:
+      # (t_spike - time_cutoff - t_start - 0.5*dt) / dt <= k-1 <= (t_spike + time_cutoff - t_start - 0.5*dt) / dt
+      # Rearranging for k:
+      # (t_spike - time_cutoff - t_start - 0.5*dt) / dt + 1 <= k <= (t_spike + time_cutoff - t_start - 0.5*dt) / dt + 1
+
+      # Calculate the approximate float indices for the start and end of the relevant bin range
+      k_float_start = (t_spike - time_cutoff - spkq.t_start - 0.5*dt) / dt + 1
+      k_float_end = (t_spike + time_cutoff - spkq.t_start - 0.5*dt) / dt + 1
+
+      # Convert float indices to integer indices, clamping to the valid bin range [1, n_bins]
+      k_start = max(1, floor(Int, k_float_start))
+      k_end = min(n_bins, ceil(Int, k_float_end))
+
+      # Iterate over the relevant bins and add the spike's contribution
+      for k in k_start:k_end
+        t_center = t_centers[k] # t_centers is 1-indexed
+        t_diff = t_spike - t_center
+        ret_y[i, k] += g(t_diff, σ)
+      end
+    end
+  end
+  t_end_new = spkq.t_start + n_bins * dt
+  # Construct the BinnedSpikeQuantity object
+  ret = BinnedSpikeQuantity(n_units, n_bins, ret_y, dt,
+    spkq.units, spkq.t_start, t_end_new, :binned_gaussian_kernel)
+
+  check_time_consistency(ret) # Ensure the resulting object is consistent
+
+  return ret
+end
+
+
+
+function discretize(spkq::SpikeTrains{R,N,T}, dt::R, binning::BinCausalGaussianKernel) where {R,N,T}
+  n_units = spkq.n_units
+  # Calculate bin centers based on the spike train's time range and dt
+  t_centers = get_t_midpoints(spkq, dt)
+  n_bins = length(t_centers)
+  σ = binning.σ
+
+  # Initialize the result matrix for binned values
+  ret_y = zeros(R, n_units, n_bins)
+
+  # Causal Gaussian kernel function (unnormalized)
+  # G(t_diff) = exp(-(t_diff^2) / (2 * σ^2)) if t_diff <= 0, else 0
+  # t_diff here is t_spike - t_center
+  g_causal(t_diff, sigma) = t_diff <= 0 ? exp(-(t_diff^2) / (2 * sigma^2)) : zero(R)
+
+  # Define a cutoff for kernel influence (e.g., 4 standard deviations)
+  # Spikes outside this range contribute negligibly to a bin.
+  # For a causal kernel, a spike at t_spike only affects bins with t_center >= t_spike.
+  # The kernel value is significant for t_center within [t_spike, t_spike + time_cutoff].
+  cutoff_sigma_multiplier = 4.0
+  time_cutoff = cutoff_sigma_multiplier * σ
+
+  # Iterate through each unit
+  for i in 1:n_units
+    current_train = spkq.trains[i]
+
+    # Iterate through each spike in the current train
+    for t_spike in current_train
+      # Calculate the range of bin centers potentially affected by this spike
+      # We are interested in bins where t_center is in [t_spike, t_spike + time_cutoff]
+      # t_center_k = t_start + (k-1 + 0.5) * dt
+      # t_spike <= t_start + (k-1 + 0.5) * dt <= t_spike + time_cutoff
+      # Rearranging for k-1:
+      # (t_spike - t_start - 0.5*dt) / dt <= k-1 <= (t_spike + time_cutoff - t_start - 0.5*dt) / dt
+      # Rearranging for k:
+      # (t_spike - t_start - 0.5*dt) / dt + 1 <= k <= (t_spike + time_cutoff - t_start - 0.5*dt) / dt + 1
+
+      # Calculate the approximate float indices for the start and end of the relevant bin range
+      k_float_start = (t_spike - spkq.t_start - 0.5*dt) / dt + 1 # Start from the bin containing t_spike
+      k_float_end = (t_spike + time_cutoff - spkq.t_start - 0.5*dt) / dt + 1
+
+      # Convert float indices to integer indices, clamping to the valid bin range [1, n_bins]
+      k_start = max(1, floor(Int, k_float_start))
+      k_end = min(n_bins, ceil(Int, k_float_end))
+
+      # Iterate over the relevant bins and add the spike's contribution
+      for k in k_start:k_end
+        t_center = t_centers[k] # t_centers is 1-indexed
+        t_diff = t_spike - t_center # t_diff is negative or zero for causal contribution
+        ret_y[i, k] += g_causal(t_diff, σ)
+      end
+    end
+  end
+  t_end_new = spkq.t_start + n_bins * dt
+  ret = BinnedSpikeQuantity(n_units, n_bins, ret_y, dt, spkq.units, spkq.t_start, t_end_new, :binned_causal_gaussian_kernel)
+  check_time_consistency(ret)
+  return ret
+end
