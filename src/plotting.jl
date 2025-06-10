@@ -180,11 +180,12 @@ function get_line_segments(spiketrains::SpikeTrains,
   else
     neurons = 1:ntot
   end
-  if !isnothing(time_offset)
-    @assert time_offset >= t_end "time_offset is probably wrong"
-  else
-    time_offset = t_start
-  end
+  # if !isnothing(time_offset)
+  #   @assert time_offset >= t_end "time_offset is probably wrong"
+  # else
+  #   time_offset = t_start
+  # end
+  time_offset = something(time_offset,t_start)
   nneus = length(neurons)
 
   trains_selected = map(neurons) do neu
