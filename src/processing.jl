@@ -116,7 +116,7 @@ end
 
 # error fallback
 
-function discretize(spkq::Union{SpikeQuantity,SpikeTrains}, dt::R,::AbstractBinning) where {R,}
+function discretize(spkq::Union{SpikeQuantity,SpikeTrains}, dt::Real,::AbstractBinning)
   error("Discretization method not implemented!!!")
 end
 
@@ -181,7 +181,7 @@ function _max_pooling_between_edges(times::AbstractVector{<:Real},x::Vector{RX},
 end
 
 
-function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinSum) where {R,N,T}
+function discretize(spkq::SpikeQuantity{R,N,T}, dt::Real,::BinSum) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
   new_t_end=t_edges[end]
@@ -196,7 +196,7 @@ function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinSum) where {R,N,T}
   return ret
 end
 
-function discretize(spkq::SpikeTrains{R,N,T}, dt::R,::BinCount) where {R,N,T}
+function discretize(spkq::SpikeTrains{R,N,T}, dt::Real,::BinCount) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
   new_t_end=t_edges[end]
@@ -211,7 +211,7 @@ function discretize(spkq::SpikeTrains{R,N,T}, dt::R,::BinCount) where {R,N,T}
   return ret
 end
 
-function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMean) where {R,N,T}
+function discretize(spkq::SpikeQuantity{R,N,T}, dt::Real,::BinMean) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
   new_t_end=t_edges[end]
@@ -228,7 +228,7 @@ end
 
 
 
-function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMaxPooling) where {R,N,T}
+function discretize(spkq::SpikeQuantity{R,N,T}, dt::Real,::BinMaxPooling) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
   new_t_end = t_edges[end]
@@ -244,7 +244,7 @@ function discretize(spkq::SpikeQuantity{R,N,T}, dt::R,::BinMaxPooling) where {R,
 end
 
 
-function discretize(spkq::SpikeTrains{R,N,T}, dt::R, binning::BinGaussianKernel) where {R,N,T}
+function discretize(spkq::SpikeTrains{R,N,T}, dt::Real, binning::BinGaussianKernel) where {R,N,T}
   n_units = spkq.n_units
   # Calculate bin centers based on the spike train's time range and dt
   t_centers = get_t_midpoints(spkq, dt)
@@ -306,7 +306,7 @@ end
 
 
 
-function discretize(spkq::SpikeTrains{R,N,T}, dt::R, binning::BinCausalGaussianKernel) where {R,N,T}
+function discretize(spkq::SpikeTrains{R,N,T}, dt::Real, binning::BinCausalGaussianKernel) where {R,N,T}
   n_units = spkq.n_units
   # Calculate bin centers based on the spike train's time range and dt
   t_centers = get_t_midpoints(spkq, dt)
