@@ -189,7 +189,7 @@ end
   end
 end
 
-@testset "Instantaneous firing rates" begin
+@testset "Instantaneous firing rates, and shuffling" begin
   
   n  = 44
   ratestest = 250 .* rand(n) 
@@ -203,4 +203,15 @@ end
   for y in iFRs.ys
     @test all(<=(200.0),y)
   end
+
+  trains_shifted = U.circular_shift_of_spiketrains(trainstest)[1]
+
+  for neu in 1:n
+    t1 = trainstest.trains[neu]
+    t2 = trains_shifted.trains[neu]
+    @test issorted(t1)
+    @test issorted(t2)
+    @test all(t1 .!= t2) 
+  end
+
 end

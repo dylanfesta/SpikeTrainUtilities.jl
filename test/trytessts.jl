@@ -10,10 +10,28 @@ import StatsBase: midpoints
 ##
 
 n  = 44
-rates1 = 60 .* rand(n) 
+the_rates = 60 .* rand(n) 
 T = 1000.0
 dt = 0.1
-trains1 = U.make_random_spiketrains(rates1,T)
+trains = U.make_random_spiketrains(the_rates,T)
+
+trains_shifted = U.circular_shift_of_spiketrains(trains)[1]
+
+# check all trains are different
+for neu in 1:n
+  t1 = trains.trains[neu]
+  t2 = trains_shifted.trains[neu]
+  @show issorted(t1),issorted(t2)
+  @assert all(t1 .!= t2) "Train $neu is not shifted"
+end
+
+
+##
+trains.trains[1][1:30]
+trains_shifted.trains[1][1:30]
+
+##
+
 edges_test1 = U.get_t_edges(trains1,dt)
 centers_test1= U.get_t_midpoints(trains1,dt)
 
@@ -24,6 +42,7 @@ for (k,_train) in enumerate(trains1.trains)
   _train_less = _train[_train .< trains_bincounts.t_end]
   @assert length(_train_less) == sum(trains_bincounts.ys[k,:])
 end
+
 
 ##
 

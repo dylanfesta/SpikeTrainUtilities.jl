@@ -7,6 +7,7 @@ using Colors
 using LinearAlgebra
 using RollingFunctions
 using Statistics, StatsBase
+using Random
 
 #
 # Internal code
