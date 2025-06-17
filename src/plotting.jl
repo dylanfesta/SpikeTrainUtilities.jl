@@ -190,8 +190,7 @@ function get_line_segments(spiketrains::SpikeTrains,
 
   trains_selected = map(neurons) do neu
     train = spiketrains.trains[neu]
-    train_selected = filter(t->t_start<=t<=t_end,train)
-    train_selected
+    filter(t->t_start<=t<=t_end,train)
   end
   tot_spikes = sum(length.(trains_selected))
   if tot_spikes > max_spikes

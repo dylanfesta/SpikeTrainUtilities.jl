@@ -371,21 +371,20 @@ end
   function sort_units!(spk::SpikeTrains{R,N,T},sorting_dict::Dict{T,I};strict_dictionary::Bool=true) where {R,N,T,I<:Integer}
 
 Modifies the `spk` object in place by sorting its units according to the provided `sorting_dict`.
-The `sorting_dict` maps original unit identifiers (of type `T`) to integers.
-Integers have to be either in the range `1:n` or `0:n-1` and the dictinary *must* contain all unit identifiers present in `spk`.
-If `strict_dictionary` is true, then n must correspond exactly to the number of units in `spk`.
-If `strict_dictionary` is false, then the dictionary can contain extra keys and n can be greater than the number of units in `spk`.
-In that case the values in `sorting_dict` are used as rankings for sorting, but the extra keys are ignored.
+The `sorting_dict` maps original unit identifiers (of type `T`) to ranking numbers.
+The dictionary must contain all keys that correspond to the units in `spk`.
+If `strict_dictionary` is true, then the dictionary must contain exactly the units present in `spk` and vice versa.
+If `strict_dictionary` is false, then the dictionary can contain extra keys.
 
 # Arguments:
 - `spk::SpikeTrains{R,N,T}`: The spike trains object to be sorted.
-- `sorting_dict::Dict{T,I}`: A dictionary mapping unit identifiers to new sort indices.
+- `sorting_dict::Dict{T,RA}`: A dictionary mapping unit identifiers to a ranking number.
 - `strict_dictionary::Bool`: If true, the function will check that the `sorting_dict` contains exactly the units present in `spk` and vice versa.
     If false, it will only check that the keys in `sorting_dict` are a subset of the units in `spk`, and use the values as rankings for sorting.
 # Returns:
 - nothing, modifies `spk` in place.
 """
-function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,I}; strict_dictionary::Bool=true) where {R,N,T,I<:Integer}
+function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,RA}; strict_dictionary::Bool=true) where {R,N,T,RA<:Real}
 
   n_units = spk.n_units
   @assert n_units > 0 "The `SpikeTrains` object must have at least one unit to sort."
@@ -411,17 +410,22 @@ function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,I}; strict_di
     end
   end
 
-  # Values must correspond to the n_units from spk and form a valid permutation.
-  sort_indices_for_spk_units = Vector{I}(undef, n_units)
+  # --- Sorting Step ---
+
+  # Create a vector of ranks corresponding to the current order of units in spk
+  # This is crucial because sortperm will give indices based on this current order.
+  ranks_for_current_units = Vector{RA}(undef, n_units)
   for i in 1:n_units
-    sort_indices_for_spk_units[i] = sorting_dict[spk.units[i]]
+    # We've already validated that spk.units[i] exists as a key in sorting_dict
+    ranks_for_current_units[i] = sorting_dict[spk.units[i]]
   end
-  if length(unique(sort_indices_for_spk_units)) != n_units
-    error("The values in `sorting_dict` must form a valid permutation of integers from 1 to $n_units. Found: $(sort(unique(sort_indices_for_spk_units))).")
-  end
-  the_sortperm = sortperm(sort_indices_for_spk_units)
-  # --- Apply the sorting ---
-  spk.units = spk.units[the_sortperm]
-  spk.trains = spk.trains[the_sortperm]
+
+  # Get the permutation indices that would sort the units according to their ranks
+  perm = sortperm(ranks_for_current_units)
+
+  # Apply the permutation to both the units and their corresponding trains
+  spk.units = spk.units[perm]
+  spk.trains = spk.trains[perm]
+
   return nothing
 end
