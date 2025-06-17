@@ -10,22 +10,34 @@ import StatsBase: midpoints
 
 ## 
 
-my_units = collect('a':'z')
-n = length(my_units)
+all_units = collect('A':'z')
+n_all = length(all_units)
+units_shuffled = shuffle(all_units)
+sorting_dict = Dict(zip(units_shuffled,1:n_all))
 
-the_rates = 60 .* rand(n) 
+idx_kill = sample(1:n_all, 33, replace=false) |> sort!
+
+units_eff = copy(all_units)
+deleteat!(units_eff,idx_kill)
+n_eff = length(units_eff)
+the_rates = 60 .* rand(n_eff)
 T = 1000.0
 trains = [U.make_poisson_samples(rate,T) for rate in the_rates ]
 
 spiketrains = U.SpikeTrains(trains; t_start=0.0, t_end=T,
-  units=my_units)
+  units=units_eff)
+
+##
 
 
-units_shuffled = shuffle(my_units)
-resorting_dict1 = Dict(zip(units_shuffled,1:n))
-resorting_dict2 = Dict(zip(units_shuffled,0:n-1))
 
-U.sort_units!(spiketrains,resorting_dict1)
+
+##
+
+mytest = sort_units!(spiketrains,sorting_dict; strict_dictionary=false)
+
+
+##
 
 
 ##

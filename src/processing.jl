@@ -368,91 +368,60 @@ end
 
 
 """
-  function sort_units!(spk::SpikeTrains{R,N,T},sorting_dict::Dict{T,I}) where {R,N,T,I<:Integer}
+  function sort_units!(spk::SpikeTrains{R,N,T},sorting_dict::Dict{T,I};strict_dictionary::Bool=true) where {R,N,T,I<:Integer}
 
 Modifies the `spk` object in place by sorting its units according to the provided `sorting_dict`.
 The `sorting_dict` maps original unit identifiers (of type `T`) to integers.
-Integers have to be either in the range `1:n_units` or `0:n_units-1` and
-the dictinary *must* contain all unit identifiers present in `spk`.
+Integers have to be either in the range `1:n` or `0:n-1` and the dictinary *must* contain all unit identifiers present in `spk`.
+If `strict_dictionary` is true, then n must correspond exactly to the number of units in `spk`.
+If `strict_dictionary` is false, then the dictionary can contain extra keys and n can be greater than the number of units in `spk`.
+In that case the values in `sorting_dict` are used as rankings for sorting, but the extra keys are ignored.
+
+# Arguments:
+- `spk::SpikeTrains{R,N,T}`: The spike trains object to be sorted.
+- `sorting_dict::Dict{T,I}`: A dictionary mapping unit identifiers to new sort indices.
+- `strict_dictionary::Bool`: If true, the function will check that the `sorting_dict` contains exactly the units present in `spk` and vice versa.
+    If false, it will only check that the keys in `sorting_dict` are a subset of the units in `spk`, and use the values as rankings for sorting.
+# Returns:
+- nothing, modifies `spk` in place.
 """
-function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,I}) where {R,N,T,I<:Integer}
+function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,I}; strict_dictionary::Bool=true) where {R,N,T,I<:Integer}
 
   n_units = spk.n_units
-  if length(sorting_dict) != n_units
-    error("The `sorting_dict` must have exactly `n_units` entries. Expected $n_units, got $(length(sorting_dict)).")
-  end
+  @assert n_units > 0 "The `SpikeTrains` object must have at least one unit to sort."
 
-  # Ensure all units in spk are in sorting_dict and vice-versa.
+  # --- Validation Step 1: Key presence and extras ---
   spk_unit_set = Set(spk.units)
   dict_key_set = Set(keys(sorting_dict))
 
-  if spk_unit_set != dict_key_set
-    missing_in_dict = setdiff(spk_unit_set, dict_key_set)
-    extra_in_dict = setdiff(dict_key_set, spk_unit_set)
-    msg = "The keys in `sorting_dict` must exactly match the units in `SpikeTrains`."
-    if !isempty(missing_in_dict)
-        msg *= " Units present in SpikeTrains but missing from sorting_dict: $missing_in_dict."
+  # Condition 1.1: All units in spk must be keys in sorting_dict (always enforced)
+  missing_keys_for_spk_units = setdiff(spk_unit_set, dict_key_set)
+  if !isempty(missing_keys_for_spk_units)
+    error("The `sorting_dict` must contain all unit identifiers present in `spk`. Missing units for spk: $missing_keys_for_spk_units.")
+  end
+
+  # Condition 1.2: Control over extra keys in sorting_dict based on strict_dictionary
+  if strict_dictionary
+    extra_keys_in_dict = setdiff(dict_key_set, spk_unit_set)
+    if !isempty(extra_keys_in_dict)
+      error("With `strict_dictionary=true`, `sorting_dict` must contain exactly the units present in `spk`. Extra keys found in dict: $extra_keys_in_dict.")
     end
-    if !isempty(extra_in_dict)
-        msg *= " Keys present in sorting_dict but not found as units in SpikeTrains: $extra_in_dict."
+    if length(sorting_dict) != n_units
+        error("With `strict_dictionary=true`, the `sorting_dict` must have exactly `n_units` entries. Expected $n_units, got $(length(sorting_dict)).")
     end
-    error(msg)
   end
 
-  # --- Validation Step 2: Check sorting_dict values (the new sort indices) ---
-  sort_indices_vec = collect(values(sorting_dict))
-  
-  if length(unique(sort_indices_vec)) != n_units
-    error("The values in `sorting_dict` (new sort indices) must be unique. Found $(length(sort_indices_vec) - length(unique(sort_indices_vec))) duplicate(s).")
+  # Values must correspond to the n_units from spk and form a valid permutation.
+  sort_indices_for_spk_units = Vector{I}(undef, n_units)
+  for i in 1:n_units
+    sort_indices_for_spk_units[i] = sorting_dict[spk.units[i]]
   end
-
-  min_val = minimum(sort_indices_vec)
-  max_val = maximum(sort_indices_vec)
-
-  if min_val == 0 # Check for 0-based indexing
-    if max_val != n_units - 1
-      error("If `sorting_dict` values are 0-indexed, they must span 0 to n_units-1. Max value found: $max_val, expected: $(n_units-1) for $n_units units.")
-    end
-    is_zero_indexed = true
-    expected_indices_range = 0:(n_units-1)
-  elseif min_val == 1 # Check for 1-based indexing
-    if max_val != n_units
-      error("If `sorting_dict` values are 1-indexed, they must span 1 to n_units. Max value found: $max_val, expected: $n_units for $n_units units.")
-    end
-    is_zero_indexed = false
-    expected_indices_range = 1:n_units
-  else
-    error("`sorting_dict` values must be 0-indexed (0 to n_units-1) or 1-indexed (1 to n_units). Minimum value found: $min_val.")
+  if length(unique(sort_indices_for_spk_units)) != n_units
+    error("The values in `sorting_dict` must form a valid permutation of integers from 1 to $n_units. Found: $(sort(unique(sort_indices_for_spk_units))).")
   end
-
-  # Ensure the values form a complete consecutive range by comparing sorted unique values with the expected range.
-  # I.(range) converts the elements of `expected_indices_range` to type `I` for correct comparison.
-  if sort(unique(sort_indices_vec)) != I.(expected_indices_range)
-      error("The values in `sorting_dict` do not form a complete consecutive range from $(first(expected_indices_range)) to $(last(expected_indices_range)). Sorted unique values found: $(sort(unique(sort_indices_vec))).")
-  end
-
-  # All validations passed, this is the actual sorting step.
-  # --- Create the permutation vector ---
-  # p[new_idx] will store the old_idx of the unit that should move to new_idx.
-  # Array indexing in Julia is 1-based, so permutation vector `p` stores 1-based original indices.
-  p = Vector{Int}(undef, n_units) 
-  
-  # Create a map from unit ID to its current (original) 1-based index in spk.units
-  unit_to_original_idx_map = Dict{T, Int}(unit_id => idx for (idx, unit_id) in enumerate(spk.units))
-
-  for (unit_id, sort_order_val) in sorting_dict
-    # Convert sort_order_val to a 1-based integer for indexing the permutation vector `p`.
-    new_logical_pos = is_zero_indexed ? sort_order_val + 1 : sort_order_val
-    
-    original_physical_idx = unit_to_original_idx_map[unit_id]
-    p[new_logical_pos] = original_physical_idx
-  end
-
-  # --- Apply the permutation ---
-  # spk.units[p] creates a new vector where the i-th element is spk.units[p[i]].
-  # This reorders spk.units according to the permutation p.
-  spk.units = spk.units[p]
-  spk.trains = spk.trains[p] # Similarly reorder the spike trains
-
+  the_sortperm = sortperm(sort_indices_for_spk_units)
+  # --- Apply the sorting ---
+  spk.units = spk.units[the_sortperm]
+  spk.trains = spk.trains[the_sortperm]
   return nothing
 end
