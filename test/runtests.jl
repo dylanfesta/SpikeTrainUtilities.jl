@@ -215,3 +215,28 @@ end
   end
 
 end
+
+@testset "Sorting units in place" begin
+
+  my_units = collect('a':'z')
+  n = length(my_units)
+
+  the_rates = 60 .* rand(n) 
+  T = 100.0
+  trains = [U.make_poisson_samples(rate,T) for rate in the_rates ]
+
+  spiketrains = U.SpikeTrains(trains; t_start=0.0, t_end=T,
+    units=my_units)
+
+
+  units_shuffled1 = shuffle(my_units)
+  resorting_dict1 = Dict(zip(units_shuffled1,1:n))
+  units_shuffled2 = shuffle(my_units)
+  resorting_dict2 = Dict(zip(units_shuffled2,0:n-1))
+
+  U.sort_units!(spiketrains,resorting_dict1)
+
+  @test all(spiketrains.units .== units_shuffled1)
+  U.sort_units!(spiketrains,resorting_dict2)
+  @test all(spiketrains.units .== units_shuffled2)
+end

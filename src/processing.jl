@@ -364,3 +364,95 @@ function discretize(spkq::SpikeTrains{R,N,T}, dt::Real, binning::BinCausalGaussi
   check_time_consistency(ret)
   return ret
 end
+
+
+
+"""
+  function sort_units!(spk::SpikeTrains{R,N,T},sorting_dict::Dict{T,I}) where {R,N,T,I<:Integer}
+
+Modifies the `spk` object in place by sorting its units according to the provided `sorting_dict`.
+The `sorting_dict` maps original unit identifiers (of type `T`) to integers.
+Integers have to be either in the range `1:n_units` or `0:n_units-1` and
+the dictinary *must* contain all unit identifiers present in `spk`.
+"""
+function sort_units!(spk::SpikeTrains{R,N,T}, sorting_dict::Dict{T,I}) where {R,N,T,I<:Integer}
+
+  n_units = spk.n_units
+  if length(sorting_dict) != n_units
+    error("The `sorting_dict` must have exactly `n_units` entries. Expected $n_units, got $(length(sorting_dict)).")
+  end
+
+  # Ensure all units in spk are in sorting_dict and vice-versa.
+  spk_unit_set = Set(spk.units)
+  dict_key_set = Set(keys(sorting_dict))
+
+  if spk_unit_set != dict_key_set
+    missing_in_dict = setdiff(spk_unit_set, dict_key_set)
+    extra_in_dict = setdiff(dict_key_set, spk_unit_set)
+    msg = "The keys in `sorting_dict` must exactly match the units in `SpikeTrains`."
+    if !isempty(missing_in_dict)
+        msg *= " Units present in SpikeTrains but missing from sorting_dict: $missing_in_dict."
+    end
+    if !isempty(extra_in_dict)
+        msg *= " Keys present in sorting_dict but not found as units in SpikeTrains: $extra_in_dict."
+    end
+    error(msg)
+  end
+
+  # --- Validation Step 2: Check sorting_dict values (the new sort indices) ---
+  sort_indices_vec = collect(values(sorting_dict))
+  
+  if length(unique(sort_indices_vec)) != n_units
+    error("The values in `sorting_dict` (new sort indices) must be unique. Found $(length(sort_indices_vec) - length(unique(sort_indices_vec))) duplicate(s).")
+  end
+
+  min_val = minimum(sort_indices_vec)
+  max_val = maximum(sort_indices_vec)
+
+  if min_val == 0 # Check for 0-based indexing
+    if max_val != n_units - 1
+      error("If `sorting_dict` values are 0-indexed, they must span 0 to n_units-1. Max value found: $max_val, expected: $(n_units-1) for $n_units units.")
+    end
+    is_zero_indexed = true
+    expected_indices_range = 0:(n_units-1)
+  elseif min_val == 1 # Check for 1-based indexing
+    if max_val != n_units
+      error("If `sorting_dict` values are 1-indexed, they must span 1 to n_units. Max value found: $max_val, expected: $n_units for $n_units units.")
+    end
+    is_zero_indexed = false
+    expected_indices_range = 1:n_units
+  else
+    error("`sorting_dict` values must be 0-indexed (0 to n_units-1) or 1-indexed (1 to n_units). Minimum value found: $min_val.")
+  end
+
+  # Ensure the values form a complete consecutive range by comparing sorted unique values with the expected range.
+  # I.(range) converts the elements of `expected_indices_range` to type `I` for correct comparison.
+  if sort(unique(sort_indices_vec)) != I.(expected_indices_range)
+      error("The values in `sorting_dict` do not form a complete consecutive range from $(first(expected_indices_range)) to $(last(expected_indices_range)). Sorted unique values found: $(sort(unique(sort_indices_vec))).")
+  end
+
+  # All validations passed, this is the actual sorting step.
+  # --- Create the permutation vector ---
+  # p[new_idx] will store the old_idx of the unit that should move to new_idx.
+  # Array indexing in Julia is 1-based, so permutation vector `p` stores 1-based original indices.
+  p = Vector{Int}(undef, n_units) 
+  
+  # Create a map from unit ID to its current (original) 1-based index in spk.units
+  unit_to_original_idx_map = Dict{T, Int}(unit_id => idx for (idx, unit_id) in enumerate(spk.units))
+
+  for (unit_id, sort_order_val) in sorting_dict
+    # Convert sort_order_val to a 1-based integer for indexing the permutation vector `p`.
+    new_logical_pos = is_zero_indexed ? sort_order_val + 1 : sort_order_val
+    
+    original_physical_idx = unit_to_original_idx_map[unit_id]
+    p[new_logical_pos] = original_physical_idx
+  end
+
+  # --- Apply the permutation ---
+  # spk.units[p] creates a new vector where the i-th element is spk.units[p[i]].
+  # This reorders spk.units according to the permutation p.
+  spk.units = spk.units[p]
+  spk.trains = spk.trains[p] # Similarly reorder the spike trains
+
+  return nothing
+end

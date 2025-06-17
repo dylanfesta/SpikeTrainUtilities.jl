@@ -7,10 +7,30 @@ using Distributions
 Random.seed!(0);
 import StatsBase: midpoints
 
+
+## 
+
+my_units = collect('a':'z')
+n = length(my_units)
+
+the_rates = 60 .* rand(n) 
+T = 1000.0
+trains = [U.make_poisson_samples(rate,T) for rate in the_rates ]
+
+spiketrains = U.SpikeTrains(trains; t_start=0.0, t_end=T,
+  units=my_units)
+
+
+units_shuffled = shuffle(my_units)
+resorting_dict1 = Dict(zip(units_shuffled,1:n))
+resorting_dict2 = Dict(zip(units_shuffled,0:n-1))
+
+U.sort_units!(spiketrains,resorting_dict1)
+
+
 ##
 
 n  = 44
-the_rates = 60 .* rand(n) 
 T = 1000.0
 dt = 0.1
 trains = U.make_random_spiketrains(the_rates,T)
