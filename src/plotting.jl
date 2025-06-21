@@ -206,3 +206,23 @@ function get_line_segments(spiketrains::SpikeTrains,
   return vcat(points_all...)
 end
 
+
+"""
+  function line_segments_to_xynans(points::Vector{Tuple{R,R}}) where R<:Real
+Converts segments obtained from `get_line_segments` to x and y vectors, using NaN to disconnect segments.
+
+# Arguments
+- `points::Vector{Tuple{R,R}}` : the points obtained from `get_line_segments`
+# Returns
+- `x_plot_all::Vector{R}` : x-coordinates of the points
+- `y_plot_all::Vector{R}` : y-coordinates of the points, with NaN to disconnect segments
+"""
+function line_segments_to_xynans(points::Vector{Tuple{R,R}}) where R<:Real
+  # converts points to x and y coordinates with NaN in between
+  points_mat = reshape(points,2,:)
+  line_add = [ (xy[1],NaN) for xy in points_mat[2,:]] # these are the NaN points to disconnect segments
+  points_mat = cat(points_mat,permutedims(line_add), dims=1)
+  x_plot_all = get.(points_mat, 1, NaN)[:]
+  y_plot_all = get.(points_mat, 2, NaN)[:]
+  return x_plot_all, y_plot_all
+end
