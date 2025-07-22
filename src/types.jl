@@ -35,11 +35,11 @@ function SpikeTrains(trains::Vector{Vector{R}};
 end
 
 # constructor from spiketimes and spikeneurons
-function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I}; 
+function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I};
+    n_units::Union{Integer,Nothing}=nothing, 
     t_start::Union{R,Nothing}=nothing, t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
 
   @assert !isempty(spiketimes) "spiketimes cannot be empty"
-
   # The 10*eps adjustment is to ensure derived intervals are inclusive of min/max spikes.
   (min_st,max_st) = extrema(spiketimes)
   @assert all(isfinite, [min_st, max_st]) "spiketimes must be finite numbers"
@@ -56,19 +56,24 @@ function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I};
   end
 
   # Generate units vector from actual neuron IDs reported in spikeneurons
-  actual_units = sort(unique(spikeneurons))
-  n_actual_units = length(actual_units)
+  if isnothing(n_units)
+    the_units = sort(unique(spikeneurons))
+    _n_units = length(the_units)
+  else
+    _n_units = n_units
+    the_units = collect(1:_n_units)
+  end
 
   # Create trains corresponding to actual_units
-  actual_trains = Vector{Vector{R}}(undef, n_actual_units)
-  for i in 1:n_actual_units
-    actual_trains[i] = R[] # Initialize with empty spike lists
+  the_trains = Vector{Vector{R}}(undef, _n_units)
+  for i in 1:_n_units
+    the_trains[i] = R[] # Initialize with empty spike lists
   end
 
   # Populate trains, filtering by time.
-  # Create a map from unit ID to index in actual_trains for efficient lookup.
+  # Create a map from unit ID to index in the_trains for efficient lookup.
   unit_to_idx_map = Dict{I, Int}()
-  for (i, unit_id) in enumerate(actual_units)
+  for (i, unit_id) in enumerate(the_units)
     unit_to_idx_map[unit_id] = i
   end
 
@@ -77,15 +82,17 @@ function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I};
     spike_time = spiketimes[k]
     idx = get(unit_to_idx_map, neuron_id, 0) # Get index for this neuron_id
     @assert idx > 0 "Neuron ID $neuron_id not found in actual units"
-    push!(actual_trains[idx], spike_time) # Spike times are added in order, so trains remain sorted if spiketimes is sorted.
+    push!(the_trains[idx], spike_time) # Spike times are added in order, so trains remain sorted if spiketimes is sorted.
   end
-  return SpikeTrains(n_actual_units, actual_units, actual_trains, eff_t_start, eff_t_end)
+  return SpikeTrains(n_actual_units, the_units, the_trains, eff_t_start, eff_t_end)
 end
 
 
-# for compatibility with old code
+# when neuron number is provided, it assumes spikeneurons are 1:n_neurons,
+# and uses empty vector for silent neurons
 function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I},
     nneus::Integer; t_start::Union{R,Nothing}=nothing, t_end::Union{R,Nothing}=nothing) where {R,I<:Integer}
+  @warn "SpikeTrains constructor with `nneus` is deprecated, use SpikeTrains(spiketimes, spikeneurons) instead." 
   return SpikeTrains(spiketimes, spikeneurons;t_start=t_start, t_end=t_end)
 end
   
