@@ -226,3 +226,38 @@ function line_segments_to_xynans(points::Vector{Tuple{R,R}}) where R<:Real
   y_plot_all = get.(points_mat, 2, NaN)[:]
   return x_plot_all, y_plot_all
 end
+
+"""
+  function line_segments_to_centers_and_size(points::Vector{Tuple{R,R}}) where R<:Real
+
+Calculates the centers and sizes of the segments obtained from `get_line_segments`.
+# Arguments
+- `points::Vector{Tuple{R,R}}` : the points obtained from `get_line_segments`
+# Returns
+- `x_centers::Vector{R}` : the x-coordinates of the centers of the segments
+- `y_centers::Vector{R}` : the y-coordinates of the centers of the segments
+- `size::R` : the size of the segments in y direction
+"""
+function line_segments_to_centers_and_size(points::Vector{Tuple{R,R}}) where R<:Real
+  @assert !isempty(points) "Input vector must not be empty."
+  @assert iseven(length(points)) "Input vector must have an even number of points."
+
+  # points are stored as (x1a,y1a), (x1b,y1b), (x2a,y2a), (x2b,y2b), ...
+  # We can reshape to get pairs of points for each segment
+  points_mat = reshape(points, 2, :)
+
+  # First points of each segment
+  p1s = points_mat[1, :]
+  # Second points of each segment
+  p2s = points_mat[2, :]
+
+  # The x-coordinate is the same for both points of a segment
+  x_centers = first.(p1s)
+  # The y-center is the average of the y-coordinates
+  y_centers = (last.(p1s) .+ last.(p2s)) ./ 2
+
+  # The size is the difference in y-coordinates, which should be constant
+  size_y = abs(last(p2s[1]) - last(p1s[1]))
+
+  return x_centers, y_centers, size_y
+end
