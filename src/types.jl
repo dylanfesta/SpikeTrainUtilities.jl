@@ -84,7 +84,7 @@ function SpikeTrains(spiketimes::Vector{R},spikeneurons::Vector{I};
     @assert idx > 0 "Neuron ID $neuron_id not found in actual units"
     push!(the_trains[idx], spike_time) # Spike times are added in order, so trains remain sorted if spiketimes is sorted.
   end
-  return SpikeTrains(n_actual_units, the_units, the_trains, eff_t_start, eff_t_end)
+  return SpikeTrains(_n_units, the_units, the_trains, eff_t_start, eff_t_end)
 end
 
 
