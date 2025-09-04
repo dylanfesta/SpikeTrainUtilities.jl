@@ -211,6 +211,16 @@ function discretize(spkq::SpikeTrains{R,N,T}, dt::Real,::BinCount) where {R,N,T}
   return ret
 end
 
+function discretize(spkq::SpikeTrains{R,N,T}, dt::Real,::BinRate) where {R,N,T}
+  counts = discretize(spkq, dt, BinCount())
+  rates_y = counts.ys ./ dt
+  ret = BinnedSpikeQuantity(counts.n_units, counts.n_bins, rates_y, dt,
+    counts.units, counts.t_start, counts.t_end, :binned_firing_rate)
+  return ret
+end
+
+
+
 function discretize(spkq::SpikeQuantity{R,N,T}, dt::Real,::BinMean) where {R,N,T}
   n_units = spkq.n_units
   t_edges = get_t_edges(spkq,dt)
