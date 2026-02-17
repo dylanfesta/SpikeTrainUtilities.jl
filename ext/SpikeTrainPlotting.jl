@@ -23,13 +23,8 @@ function SpikeTrainUtilities.plot_spike_raster(trains::Vector{Vector{Float64}},
   f = Figure()
   rast = permutedims(theraster)
   pxtimes,pxneus = size(rast)
-  neu_yvals  = let n_neu = length(trains),
-    N = 2*n_neu*(spike_separator+spike_size)+2*spike_separator+spike_size
-    ret = collect(range(0,n_neu+1;length=N))
-    ret[spike_size+1:end-spike_size]
-  end
-  pxtimes,pxneus = size(rast)
-  times = range(0,time_duration,length=pxtimes)
+  times = (0 .. time_duration)
+  neu_yvals = (0 .. length(trains)+1)
   ax1 = Axis(f[1, 1], aspect=pxtimes/pxneus,
     rightspinevisible=false,topspinevisible=false,
     xlabel="time (s)",ylabel="neuron #")
@@ -38,7 +33,8 @@ function SpikeTrainUtilities.plot_spike_raster(trains::Vector{Vector{Float64}},
 end
 
 
-function SpikeTrainUtilities.plot_spike_raster(S::SpikeTrainUtilities.SpikeTrains{R,N},dt::Real,time_duration::Real;
+function SpikeTrainUtilities.plot_spike_raster(S::SpikeTrainUtilities.SpikeTrains{R,N},
+      dt::Real,time_duration::Real;
     t_start::Real=0.0,
     spike_size::Integer = 5,
     spike_separator::Integer = 1,

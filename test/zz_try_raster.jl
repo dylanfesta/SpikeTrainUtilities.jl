@@ -1,6 +1,6 @@
 push!(LOAD_PATH, abspath(@__DIR__,".."))
 using SpikeTrainUtilities ; global const U = SpikeTrainUtilities
-using Makie,CairoMakie
+using Makie,CairoMakie,Colors,NamedColors
 using Random
 using Statistics
 Random.seed!(0)
@@ -8,7 +8,7 @@ Random.seed!(0)
 
 ##
 
-rates = [5.,10.0,5.,100.0,1000000.0]
+rates = [5.,10.0,5.,100.0,200.0]
 T = 10.0
 testspiketrains = U.make_random_spiketrains(rates,T)
 
@@ -23,27 +23,15 @@ f = let _f=Figure()
   _f
 end
 display(f)
+
+
+## Use old function
+U.plot_spike_raster(testspiketrains,1E-3,2.0;
+  t_start=1.0,
+  spike_size=50,
+  spike_separator=8,
+  background_color=RGB(1.,1.,1.),
+  spike_colors=RGB(0.,0.0,0.0),
+  max_size=10E4)
+
 ##
-
-f = Figure()
-Axis(f[1, 1])
-
-xs = 1:0.2:10
-ys = sin.(xs)
-
-linesegments!(xs, ys)
-display(f)
-##
-f = let _f=Figure()
-  ax=Axis(_f[1, 1])
-  plot_points_test = [ (Point(1,0.0),Point(1,1.0) ), (Point(2.1,0.0),Point(2.1,1.0) ) ]
-  plot_points_test2 = [ (1,0.0), (1.1,1), (2.1,0.0), (2.1,1.0)]
-  testthis = _line_segments_onetrain([1.,2.,4.],0.0,0.7)
-  testthat = _line_segments_onetrain([0.,3.,6.],1.0,0.7)
-  testt3 = _line_segments_onetrain(Vector{Float64}(),3.0,0.7)
-  _test = vcat(testthis,testthat,testt3)
-  linesegments!(ax,_test)
-  _f
-end
-display(f)
-
