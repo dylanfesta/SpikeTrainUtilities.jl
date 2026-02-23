@@ -22,12 +22,12 @@ include("plotting.jl")     # processes data for plotting
 # Exports
 #
 export
-    SpikeTrains,
-    binned,
-    isi_hist,
-    psth,
-    rasterplot,
-    spike_distance
+  SpikeTrains,
+  binned,
+  isi_hist,
+  psth,
+  rasterplot,
+  spike_distance
 
 
 end # module
