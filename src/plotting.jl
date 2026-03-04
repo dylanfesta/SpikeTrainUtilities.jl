@@ -1,7 +1,8 @@
 
 
 """
-  draw_spike_raster(trains::Vector{Vector{Float64}},
+```julia
+draw_spike_raster(trains::Vector{Vector{Float64}},
       dt::Real,Tend::Real;
       Tstart::Real=0.0,
       spike_size::Integer = 5,
@@ -9,6 +10,7 @@
       background_color::Color=RGB(1.,1.,1.),
       spike_colors::Union{C,Vector{C}}=RGB(0.,0.0,0.0),
       max_size::Real=1E4) where C<:Color
+```
 
 Draws a matrix that contains the raster plot of the spike train.
 
@@ -31,50 +33,50 @@ Draws a matrix that contains the raster plot of the spike train.
   + `raster_matrix::Matrix{Color}` you can save it as a png file
 """
 function draw_spike_raster(trains::Vector{Vector{Float64}},
-  dt::Real,time_duration::Real;
-    t_start::Real=0.0,
-    spike_size::Integer = 5,
-    spike_separator::Integer = 1,
-    background_color::Color=RGB(1.,1.,1.),
-    spike_colors::Union{C,Vector{C}}=RGB(0.,0.0,0.0),
-    max_size::Real=1E4) where C<:Color
+  dt::Real, time_duration::Real;
+  t_start::Real=0.0,
+  spike_size::Integer=5,
+  spike_separator::Integer=1,
+  background_color::Color=RGB(1., 1., 1.),
+  spike_colors::Union{C,Vector{C}}=RGB(0., 0.0, 0.0),
+  max_size::Real=1E4) where C<:Color
   nneus = length(trains)
   t_end = t_start + time_duration
   if typeof(spike_colors) <: Color
-    spike_colors = repeat([spike_colors,];outer=nneus)
+    spike_colors = repeat([spike_colors,]; outer=nneus)
   else
     @assert length(spike_colors) == nneus "error in setting colors"
   end
-  binned_binary  = map(trains) do train
-    .! iszero.(bin_spikes(train,dt,t_end;t_start=t_start)[2])
+  binned_binary = map(trains) do train
+    .!iszero.(bin_spikes(train, dt, t_end; t_start=t_start)[2])
   end
   ntimes = length(binned_binary[1])
   ret = fill(background_color,
-    (nneus*spike_size + # spike sizes
-      spike_separator*nneus + # spike separators (incl. top/bottom padding) 
-      spike_separator),ntimes)
-  @assert all(size(ret) .< max_size ) "The image is too big! Please change time limits"  
-  for (neu,binv,col) in zip(1:nneus,binned_binary,spike_colors)
+    (nneus * spike_size + # spike sizes
+     spike_separator * nneus + # spike separators (incl. top/bottom padding) 
+     spike_separator), ntimes)
+  @assert all(size(ret) .< max_size) "The image is too big! Please change time limits"
+  for (neu, binv, col) in zip(1:nneus, binned_binary, spike_colors)
     spk_idx = findall(binv)
-    _idx_pre = (neu-1)*(spike_size+spike_separator)+spike_separator
+    _idx_pre = (neu - 1) * (spike_size + spike_separator) + spike_separator
     y_color = _idx_pre+1:_idx_pre+spike_size
-    ret[y_color,spk_idx] .= col
+    ret[y_color, spk_idx] .= col
   end
   return ret
 end
 
 
-function draw_spike_raster(S::SpikeTrains{R,N},dt::Real,time_duration::Real;
-    t_start::Real=0.0,
-    spike_size::Integer = 5,
-    spike_separator::Integer = 1,
-    background_color::Color=RGB(1.,1.,1.),
-    spike_colors::Union{C,Vector{C}}=RGB(0.,0.0,0.0),
-    max_size::Real=1E4) where {R,N,C<:Color}
-  @assert t_start >= S.t_start "t_start is too small"   
+function draw_spike_raster(S::SpikeTrains{R,N}, dt::Real, time_duration::Real;
+  t_start::Real=0.0,
+  spike_size::Integer=5,
+  spike_separator::Integer=1,
+  background_color::Color=RGB(1., 1., 1.),
+  spike_colors::Union{C,Vector{C}}=RGB(0., 0.0, 0.0),
+  max_size::Real=1E4) where {R,N,C<:Color}
+  @assert t_start >= S.t_start "t_start is too small"
   @assert t_start + time_duration <= S.t_end "t_start + duration is too large"
   trains = S.trains
-  return draw_spike_raster(trains,dt,time_duration;
+  return draw_spike_raster(trains, dt, time_duration;
     t_start=t_start,
     spike_size=spike_size,
     spike_separator=spike_separator,
@@ -123,33 +125,37 @@ end
 
 # helper for get_line_segments function
 function _line_segments_onetrain(train::Vector{<:Real},
-  neuron_offset::Real,time_offset::Real,height_scaling::Real)
+  neuron_offset::Real, time_offset::Real, height_scaling::Real)
   n_units = length(train)
   if n_units == 0
     # returns empty vector
     return Vector{Tuple{Float64,Float64}}()
   end
-  npoints = n_units*2
-  t_rep = repeat(train;inner=2)
+  npoints = n_units * 2
+  t_rep = repeat(train; inner=2)
   t_rep .-= time_offset
-  xs_nofix = fill(neuron_offset,npoints)
-  fixes = repeat([-0.5*height_scaling,0.5*height_scaling];outer=n_units)
+  xs_nofix = fill(neuron_offset, npoints)
+  fixes = repeat([-0.5 * height_scaling, 0.5 * height_scaling]; outer=n_units)
   xs_fix = xs_nofix .+ fixes
-  return collect(zip(t_rep,xs_fix))
+  return collect(zip(t_rep, xs_fix))
 end
 
+
 """
-  function get_line_segments(spiketrains::SpikeTrains,
+```julia
+  function get_line_segments(spiketrains::Union{SpikeTrains, Vector{<:Vector{<:Real}}},
     t_start::Real,t_end::Real;
     height_scaling::Real=0.7,
     neurons::Union{Vector{Int},Nothing}=nothing,
     offset::Real = 0.0,
     max_spikes::Real=1E6)
+```
 
 Returns point coordinates that can be used for line segments for a raster plot of the spiketrain
 
 # Arguments
-- `spiketrains::SpikeTrains` : the spiketrains
+- `spiketrains::Union{SpikeTrains, Vector{<:Vector{<:Real}}}` : the spiketrains either as SpikeTrains object or
+          simply as vector of vectors of real numbers 
 - `t_start::Real` : the starting time of the raster
 - `t_end::Real` : the ending time of the raster
 - `height_scaling::Real=0.7` : how tall each spike is, 1.0 is the full height
@@ -164,13 +170,18 @@ Returns point coordinates that can be used for line segments for a raster plot o
    representing neurons on the y axis. This can be used directly as argument to `linesegments!` in Makie. 
 
 """
-function get_line_segments(spiketrains::SpikeTrains,
-    t_start::Real,t_end::Real;
-    height_scaling::Real=0.7,
-    neurons::Union{Vector{Int},Nothing}=nothing,
-    neuron_offset::Real = 0.0,
-    time_offset::Union{Real,Nothing}=nothing,
-    max_spikes::Real=1E6)
+function get_line_segments(spiketrains::Union{SpikeTrains,Vector{<:Vector{<:Real}}},
+  t_start::Real, t_end::Real;
+  height_scaling::Real=0.7,
+  neurons::Union{Vector{Int},Nothing}=nothing,
+  neuron_offset::Real=0.0,
+  time_offset::Union{Real,Nothing}=nothing,
+  max_spikes::Real=1E6)
+
+  if spiketrains isa Vector
+    _trains = map(v -> convert(Vector{Float64}, v), spiketrains)
+    spiketrains = SpikeTrains(_trains; t_start=Float64(t_start), t_end=Float64(t_end))
+  end
 
   ntot = spiketrains.n_units
   @assert t_start >= spiketrains.t_start "starting time $t_start is before the trains starting time $(spiketrains.t_start)"
@@ -180,35 +191,34 @@ function get_line_segments(spiketrains::SpikeTrains,
   else
     neurons = 1:ntot
   end
-  # if !isnothing(time_offset)
-  #   @assert time_offset >= t_end "time_offset is probably wrong"
-  # else
-  #   time_offset = t_start
-  # end
-  time_offset = something(time_offset,t_start)
+
+  time_offset = something(time_offset, t_start)
   nneus = length(neurons)
 
   trains_selected = map(neurons) do neu
     train = spiketrains.trains[neu]
-    filter(t->t_start<=t<=t_end,train)
+    filter(t -> t_start <= t <= t_end, train)
   end
   tot_spikes = sum(length.(trains_selected))
   if tot_spikes > max_spikes
     # check rates, for safety
-    numerical_rates = numerical_rates(spiketrains; t_start=t_start,t_end=t_end)
+    numerical_rates = numerical_rates(spiketrains; t_start=t_start, t_end=t_end)
     error(" There are $nneus neurons with a mean rate of $(mean(numerical_rates)) Hz.
       The total number of spikes is $(tot_spikes) which is larger than the maximum $(max_spikes).
       Set a smaller time window, or fewer neruons.")
   end
-  points_all = map(enumerate(trains_selected)) do (k,train)
-    _line_segments_onetrain(train,neuron_offset+k,time_offset,height_scaling)
+  points_all = map(enumerate(trains_selected)) do (k, train)
+    _line_segments_onetrain(train, neuron_offset + k, time_offset, height_scaling)
   end
   return vcat(points_all...)
 end
 
 
 """
+```julia
   function line_segments_to_xynans(points::Vector{Tuple{R,R}}) where R<:Real
+```
+
 Converts segments obtained from `get_line_segments` to x and y vectors, using NaN to disconnect segments.
 
 # Arguments
@@ -219,9 +229,9 @@ Converts segments obtained from `get_line_segments` to x and y vectors, using Na
 """
 function line_segments_to_xynans(points::Vector{Tuple{R,R}}) where R<:Real
   # converts points to x and y coordinates with NaN in between
-  points_mat = reshape(points,2,:)
-  line_add = [ (xy[1],NaN) for xy in points_mat[2,:]] # these are the NaN points to disconnect segments
-  points_mat = cat(points_mat,permutedims(line_add), dims=1)
+  points_mat = reshape(points, 2, :)
+  line_add = [(xy[1], NaN) for xy in points_mat[2, :]] # these are the NaN points to disconnect segments
+  points_mat = cat(points_mat, permutedims(line_add), dims=1)
   x_plot_all = get.(points_mat, 1, NaN)[:]
   y_plot_all = get.(points_mat, 2, NaN)[:]
   return x_plot_all, y_plot_all
