@@ -32,7 +32,7 @@ import StatsBase: midpoints
   @test maximum(trains_all) == maximum(train3)
 end
 
-#= @testset "Merge trains" begin
+@testset "Merge trains" begin
   n1,n2,n3 = 10,3,22
   rates1 = 10 .* rand(n1) 
   rates2 = 20 .* rand(n2)
@@ -52,9 +52,10 @@ end
 
   trainsallmerged = U.merge(train1,train2,train3)
   @test trainsallmerged.n_units == n1+n2+n3
+  @test trainsallmerged.units == vcat(train1.units, train2.units, train3.units)
   @test all(trainsallmerged.trains[n1+1] .== train2.trains[1])
   @test all(trainsallmerged.trains[end] .== train3.trains[end])
-end =#
+end
 
 @testset "Numerical rates" begin
 

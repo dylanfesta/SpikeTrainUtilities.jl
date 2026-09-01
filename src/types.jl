@@ -158,9 +158,10 @@ function Base.merge(S::SpikeTrains{R,N,T}...) where {R,N,T}
   @assert all(s->isapprox(s.t_start,t_start;atol=1e-4),S) "Starting times should be the same"
   new_tend = maximum(s->s.t_end,S)
   new_n_units = sum(s->s.n_units,S)
+  new_units = cat([s.units for s in S]..., dims=1)
   new_trains = cat([s.trains for s in S]...,dims=1)
   @assert length(new_trains) == new_n_units "Something went wrong"
-  return SpikeTrains(new_n_units,new_trains,t_start,new_tend)
+  return SpikeTrains(new_n_units,new_units,new_trains,t_start,new_tend)
 end
 
 
@@ -194,7 +195,7 @@ function SpikeTrains(discrete::DiscreteSpikeTrains{R,N}) where {R,N}
   for neu in 1:n_units
     trains[neu] = map( x->t_offset+dt*x,findall(discrete.trains[neu,:]))
   end
-  return SpikeTrains(n_units,trains,discrete.t_start,discrete.t_end)
+  return SpikeTrains(n_units,collect(1:n_units),trains,discrete.t_start,discrete.t_end)
 end
 
 
