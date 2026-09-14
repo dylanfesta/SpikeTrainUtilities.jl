@@ -8,7 +8,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "Makie"
+      - dependency-name: "CairoMakie"
     groups:
       all-julia-packages:
         patterns:
           - "*"
+        exclude-patterns:
+          - "Makie"
+          - "CairoMakie"
